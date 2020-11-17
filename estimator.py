@@ -14,7 +14,7 @@ from simplex import Simplex
 import sys
 
 # FUNCTION DEFINITION
-def Estimator(M,x_init,x_blurred,alpha,mu,niter = 1000):
+def Estimator(M,x_init,x_blurred,alpha,mu,niter=100):
     """
     Estimation d'un noyau de convolution par méthode variationnelle
     Fista Algorithm
@@ -31,8 +31,10 @@ def Estimator(M,x_init,x_blurred,alpha,mu,niter = 1000):
     """
     # Local parameters
     Nx, Ny = x_init.shape
-    support_x = np.arange(Nx/2+1-M,Nx/2+M)
-    support_y = np.arange(Ny/2+1-M,Ny/2+M)
+    min_x = Nx//2+1-M-2
+    max_x = Nx//2+M-1
+    min_y = Ny//2+1-M-2
+    max_y = Ny//2+M-1
     # Initialisation
     p2_bar = np.random.randn(Nx,Ny)
     p2_old = p2_bar 
@@ -40,15 +42,18 @@ def Estimator(M,x_init,x_blurred,alpha,mu,niter = 1000):
     # FFT images
     fft_u = fft2(x_init)
     fft_g = fft2(x_blurred)
+    # Rescale alpha
+    if alpha>1 :
+        alpha = Nx*Ny*alpha
     #
     for _ in range(niter):
         # Actualisation p1
         # calcul de prox f dans le domaine de Fourier
         hat_p2_bar = fft2(-p2_bar/2/alpha) 
         hat_prox = (2*alpha*hat_p2_bar \
-            + mu*np.conjugate(fft_u).dot(fft_g))\
+            + mu*np.conjugate(fft_u)*fft_g)\
              /(2*alpha \
-             + mu*np.conjugate(fft_u).dot(fft_u)) 
+             + mu*np.conjugate(fft_u)*fft_u) 
         # retour dans le domaine spatial
         prox = np.real(ifft2(hat_prox)) 
         #
@@ -58,8 +63,8 @@ def Estimator(M,x_init,x_blurred,alpha,mu,niter = 1000):
         # annulation en dehors du support 
         # et projection sur le simplexe
         p1_shift = fftshift(p1) 
-        proj = np.zeros(Nx,Ny) 
-        proj[support_x,support_y] = Simplex(-p1_shift[support_x,support_y]/2/alpha)
+        proj = np.zeros((Nx,Ny)) 
+        proj[min_x:max_x,min_y:max_y] = Simplex(-p1_shift[min_x:max_x,min_y:max_y]/2/alpha)
         proj = fftshift(proj) 
         #
         p2 = - p1 - 2*alpha*proj 
@@ -72,6 +77,6 @@ def Estimator(M,x_init,x_blurred,alpha,mu,niter = 1000):
         #
         # Kernel K reconstruction
     K = fftshift(-(p1 + p2)/2/alpha) 
-    K = K[support_x,support_y]
+    K = K[min_x:max_x,min_y:max_y]
     #
     return K

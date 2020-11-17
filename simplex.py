@@ -27,7 +27,6 @@ def Simplex(y):
     """
     # Step 1 : Sort y in the ascending order
     ## (rearrangment on a 1-D vector)
-    n,p = y.shape
     y_temp = np.sort(y, axis=None) 
     nsize = len(y_temp)
     # Step 2 : Compute t_i = (\sum_{i}^{n-1} y_j -1)/(n-i)
