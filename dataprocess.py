@@ -3,7 +3,7 @@ Tools functions to load, blurr and show images or data
 ---------
     DataLoader     : Load initial images and preprocess it to be a [Nx x Ny] rectangle
     Blurr          : blur images with kernel K
-    Display        : show initial image, blurred image, kernel
+    Add_noise      : add gaussian white noise to an image
 @author: Cecile Della Valle
 @date: 09/11/2020
 """
@@ -46,13 +46,22 @@ def Blurr(x_init,K):
     Parameters
     ----------
         x_init (numpy array): image
-        K (numpy array): 2D Kernel
+        K      (numpy array): 2D Kernel
     Returns
     -------
         x_blurred (numpy array): output image
     """
-    # Convolve
-    x_blurred = fft_convolve2d(x_init,K)
+    # Padd the kernel y
+    m,n = x_init.shape
+    p,q = K.shape
+    K_padd = np.pad(K, ((m//2-p//2,m//2-p//2),(n//2-q//2,n//2-q//2)), 'constant')
+    # Perform fft
+    fr = fft2(x_init)
+    fr2 = fft2(K_padd) 
+    # Compute multiplication and inverse fft
+    x_blurred = np.real(ifft2(fr*fr2))
+    x_blurred = np.roll(x_blurred, -int(m//2+1),axis=0)
+    x_blurred = np.roll(x_blurred, -int(n//2+1),axis=1)
     return x_blurred
 
 def Add_noise(x_init,noise_level=0.05):
@@ -61,7 +70,7 @@ def Add_noise(x_init,noise_level=0.05):
     Parameters
     ----------
         x_init (numpy array): image
-        noise_level (float): level of noise
+        noise_level  (float): level of noise
     Returns
     -------
         x_noise (numpy array): output image
@@ -72,25 +81,3 @@ def Add_noise(x_init,noise_level=0.05):
     x_noise += np.median(x_init)*noise_level*(2*np.random.randn(m,n)-1)
     return x_noise
     
-def fft_convolve2d(x,y):
-    """ 2D convolution, using FFT
-    Parameters
-    ----------
-        x (numpy array): image
-        y (numpy array): 2D Kernel
-    Returns
-    -------
-       cc (numpy array): x*y
-    """
-    # Padd the kernel y
-    m,n = x.shape
-    p,q = y.shape
-    y_padd = np.pad(y, ((m//2-p//2,m//2-p//2),(n//2-q//2,n//2-q//2)), 'constant')
-    # Perform fft
-    fr = fft2(x)
-    fr2 = fft2(y_padd) 
-    # Compute multiplication and inverse fft
-    cc = np.real(ifft2(fr*fr2))
-    cc = np.roll(cc, -int(m//2+1),axis=0)
-    cc = np.roll(cc, -int(n//2+1),axis=1)
-    return cc

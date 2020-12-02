@@ -75,7 +75,7 @@ def Estimator(M,x_init,x_blurred,alpha,mu,niter=100):
         p2_bar = relax*p2 + (1-relax)*p2_old 
         p2_old = p2 
         #
-        # Kernel K reconstruction
+    # Kernel K reconstruction
     K = fftshift(-(p1 + p2)/2/alpha) 
     K = K[min_x:max_x,min_y:max_y]
     #
