@@ -25,6 +25,9 @@ def Display(K_init, K_alpha, Ninterp = 100):
         K_init    (numpy array) : initial kernel (2Mx2M size)
         K_alpha   (numpy array) : reconstruct kernel (2Mx2M size)
         Ninterp         (float) : size of grid of interpolation
+    Returns
+    ----------
+        -
     """
     # Interpolate the Kernel diagonal
     Nx     = np.linspace(-1,1,K_init.shape[0])
@@ -63,6 +66,9 @@ def Error_Display(x_init, K, K_alpha):
         x_init    (numpy array) : initial inmage
         K         (numpy array) : initial kernel (2Mx2M size)
         K_alpha   (numpy array) : reconstruct kernel
+    Returns
+    ----------
+        -
     """
     fig, (ax0, ax1, ax2) = plt.subplots(1, 3, figsize=(15,15))
     # initial image
