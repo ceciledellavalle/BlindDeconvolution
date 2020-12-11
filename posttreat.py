@@ -72,23 +72,23 @@ def Error_Display(x_init, K, K_alpha):
     """
     fig, (ax0, ax1, ax2) = plt.subplots(1, 3, figsize=(15,15))
     # initial image
-    ax0.imshow(x_init)
+    ax0.imshow(x_init,cmap='gray')
     ax0.set_title('Initial')
     ax0.axis('off')
     # initial image (blurred)
     x_blurred = Blurr(x_init,K)
-    ax1.imshow(x_blurred)
+    ax1.imshow(x_blurred,cmap='gray')
     ax1.set_title('Blurred')
     ax1.axis('off')
     # reconstruct image (blurred)
     x_blurred_alpha = Blurr(x_init,K_alpha)
-    ax2.imshow(x_blurred_alpha)
+    ax2.imshow(x_blurred_alpha,cmap='gray')
     ax2.set_title('Reconstruct Blurred')
     ax2.axis('off')
     # Show plot
     plt.show()
     # Error computation and dispay
-    n,m      = x_init.shape
-    error_l2 = np.linalg.norm(x_blurred_alpha-x_blurred)/(n*m)
+    norm     = np.linalg.norm(x_init)
+    error_l2 = np.linalg.norm(x_blurred_alpha-x_blurred)/norm
     print("Erreur totale :")
     print(error_l2)
