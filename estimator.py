@@ -90,6 +90,85 @@ def Estimator_TV(x_blurred,K,alpha,mu,niter=100):
     return v_bar
 
 # Estimation of the Kernel
+def Estimator_Lap(M,x_init,x_blurred,alpha,mu,niter=100):
+    """
+    Estimation d'un noyau de convolution par méthode variationnelle
+    Régularisation par convolution avec Laplacien
+    Fista Algorithm
+    Parameters
+    ----------
+        M (int)                : size parameter of 2D-Kernel (2M)^2
+        x_init (numpy array)   : image size c x Nx x Ny
+        x_blurred (numpy array): blurred image c x Nx x Ny
+        alpha (float)          : regularisation parameter
+        niter (int)            : number of iterations
+    Returns
+    -------
+        K (numpy array): the estimated Kernel
+    """
+    # Local parameters
+    Nx, Ny = x_init.shape
+    min_x = Nx//2+1-M-2
+    max_x = Nx//2+M-1
+    min_y = Ny//2+1-M-2
+    max_y = Ny//2+M-1
+    # Initialisation
+    x_k   = np.random.randn(Nx,Ny)
+    x_old = x_k.copy() 
+    tkold = 1 
+    # Derivation
+    d      = -np.ones((3,3))
+    d[1,1] = 8
+    d_pad  = np.zeros((Nx,Ny))
+    d_pad[Nx//2:Nx//2+3,Ny//2:Ny//2+3] = d
+    # Rescale alpha
+    if alpha>1 :
+        alpha = Nx*Ny*alpha
+    # Gradient descent parameter
+    tau = 100
+    #
+    def myconvolv(a,b):
+        # a and b must be of same size !
+        m,n   = a.shape
+        # Perform fft
+        fft_a = fft2(a)
+        fft_b = fft2(b) 
+        # Compute multiplication and inverse fft
+        cc    = np.real(ifft2(fft_a*fft_b))
+        cc    = np.roll(cc, -int(m//2+1),axis=0)
+        cc    = np.roll(cc, -int(n//2+1),axis=1)
+        return cc
+    #
+    for _ in range(niter):
+        # Step 1
+        # calcul du gradient
+        conv1 = myconvolv(x_k,x_init)
+        grad1 = 2*mu*(myconvolv(x_init.T,conv1)-myconvolv(x_init.T,x_blurred)) # datafit term
+        conv2 = myconvolv(d_pad,x_k)
+        grad2 = 2*alpha*myconvolv(d_pad,conv2) # regularisation
+        grad = grad1 + grad2
+        #
+        y_k = x_k - tau*grad
+        #
+        # Step 2 
+        # annulation en dehors du support 
+        # et projection sur le simplexe
+        x_k                          = np.zeros((Nx,Ny)) 
+        x_k[min_x:max_x,min_y:max_y] = Simplex(y_k[min_x:max_x,min_y:max_y])
+        # Relaxation (FISTA)
+        tk = (1+math.sqrt(4*tkold+1))/2 
+        relax = 1+(tkold-1)/tk 
+        tkold = tk 
+        x_k = relax*x_k + (1-relax)*x_old 
+        x_old = x_k.copy()
+        #
+    # Kernel K reconstruction
+    K = x[min_x:max_x,min_y:max_y]
+    #
+    return K
+
+
+# Estimation of the Kernel
 def Estimator(M,x_init,x_blurred,alpha,mu,niter=100):
     """
     Estimation d'un noyau de convolution par méthode variationnelle
