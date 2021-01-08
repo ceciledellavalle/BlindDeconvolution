@@ -38,7 +38,7 @@ def Estimator_Lap(M,x_init,x_blurred,alpha,mu,tau=100,niter=100):
     min_y = Ny//2+1-M-2
     max_y = Ny//2+M-1
     # Initialisation
-    x_k   = np.random.randn(Nx,Ny)
+    x_k   = np.zeros((Nx,Ny))
     x_old = x_k.copy() 
     tkold = 1 
     # Derivation
