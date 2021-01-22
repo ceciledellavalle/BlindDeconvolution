@@ -70,7 +70,7 @@ def Error_Display(x_init, K, K_alpha):
     ----------
         -
     """
-    fig, (ax0, ax1, ax2) = plt.subplots(1, 3, figsize=(15,15))
+    fig, (ax0, ax1, ax2) = plt.subplots(1, 3, figsize=(15,10))
     # initial image
     ax0.imshow(x_init,cmap='gray')
     ax0.set_title('Initial')

@@ -52,12 +52,13 @@ def Blurr(x_init,K):
         x_blurred (numpy array): output image
     """
     # Padd the kernel y
-    m,n = x_init.shape
-    p,q = K.shape
-    K_padd = np.pad(K, ((m//2-p//2,m//2-p//2),(n//2-q//2,n//2-q//2)), 'constant')
+    m,n   = x_init.shape
+    p,q   = K.shape
+    K_pad = np.pad(K, ((m//2-p//2,m//2-p//2),(n//2-q//2,n//2-q//2)), 'constant')
+    print(K_pad.shape)
     # Perform fft
-    fr = fft2(x_init)
-    fr2 = fft2(K_padd) 
+    fr  = fft2(x_init)
+    fr2 = fft2(K_pad) 
     # Compute multiplication and inverse fft
     x_blurred = np.real(ifft2(fr*fr2))
     x_blurred = np.roll(x_blurred, -int(m//2+1),axis=0)
