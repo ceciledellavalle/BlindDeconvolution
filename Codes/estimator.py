@@ -10,13 +10,13 @@ Kernel estimation Function
 import numpy as np
 from numpy.fft import fft2, ifft2, fftshift
 import math
-from simplex import Simplex
+from Codes.simplex import Simplex
 import sys
 import matplotlib.pyplot as plt
 
 
 # Estimation of the Kernel
-def Estimator_Lap(M,x_init,x_blurred,alpha,mu,niter=100,nesterov=False):
+def Estimator_Lap(M,x_init,x_blurred,alpha,niter=100,simplex=False,nesterov=False):
     """
     Estimation d'un noyau de convolution par méthode variationnelle
     Régularisation par convolution avec Laplacien
@@ -56,7 +56,7 @@ def Estimator_Lap(M,x_init,x_blurred,alpha,mu,niter=100,nesterov=False):
     fft_xb = fft2(fftshift(x_blurred))
     fft_d  = fft2(d_pad)
     # compute gradient step as 2/L with L the lipschitz constant
-    grad   = mu*np.conjugate(fft_xi)*fft_xi\
+    grad   = np.conjugate(fft_xi)*fft_xi\
             + alpha*np.conjugate(fft_d)*fft_d
     grad   = np.real(ifft2(grad))
     Lip    = np.linalg.norm(grad,ord=2)
@@ -70,7 +70,7 @@ def Estimator_Lap(M,x_init,x_blurred,alpha,mu,niter=100,nesterov=False):
     for i in range(niter):
         # Step 1
         # calcul du gradient
-        grad1 = mu*np.conjugate(fft_xi)*(fft_xi*fft_xk-fft_xb)# datafit term
+        grad1 = np.conjugate(fft_xi)*(fft_xi*fft_xk-fft_xb)# datafit term
         grad2 = alpha*np.conjugate(fft_d)*fft_d*fft_xk # regularisation
         grad  = grad1 + grad2
         #
@@ -85,10 +85,11 @@ def Estimator_Lap(M,x_init,x_blurred,alpha,mu,niter=100,nesterov=False):
         # Step 4
         # annulation en dehors du support 
         # et projection sur le simplexe
-        proj                          = np.zeros((Nx,Ny))
-        proj[min_x:max_x,min_y:max_y] = Simplex(x_k[min_x:max_x,min_y:max_y])
-        x_k                           = proj.copy()
-        # Step 4
+        if simplex:
+            proj                          = np.zeros((Nx,Ny))
+            proj[min_x:max_x,min_y:max_y] = Simplex(x_k[min_x:max_x,min_y:max_y])
+            x_k                           = proj.copy()
+        # Step 5
         # Nesterov acceleration
         if nesterov:
             tk    = (1+math.sqrt(4*tkold+1))/2
@@ -96,24 +97,24 @@ def Estimator_Lap(M,x_init,x_blurred,alpha,mu,niter=100,nesterov=False):
             tkold = tk
             x_k   = relax*x_k + (1-relax)*x_old
             x_old = x_k.copy()
-        # Step 5
+        # Step 6
         fft_xk = fft2(x_k)
         #
-        # Step 6
+        # Step 7
         # Functional computation  with Parceval formula
         conv1 = np.real(ifft2(fft_xi*fft_xk))
         conv1 = fftshift(conv1)
         conv2 = np.real(ifft2(fft_d*fft_xk))
         conv2 = fftshift(conv2)
-        Jalpha[i] = 0.5*mu*np.linalg.norm(conv1-x_blurred)**2 \
+        Jalpha[i] = 0.5*np.linalg.norm(conv1-x_blurred)**2 \
              + 0.5*alpha*np.linalg.norm(conv2)**2
-    # plot
-    fig, (ax0, ax1) = plt.subplots(1, 2, figsize=(5,3))
-    ax0.loglog(Jalpha)
-    ax0.set_title("Fonction J à minimiser")
-    ax1.plot(ngrad)
-    plt.show()
-    return x_k[min_x:max_x,min_y:max_y]
+    # # plot
+    # fig, (ax0, ax1) = plt.subplots(1, 2, figsize=(5,3))
+    # ax0.loglog(Jalpha)
+    # ax0.set_title("Fonction J à minimiser")
+    # ax1.plot(ngrad)
+    # plt.show()
+    return x_k[min_x:max_x,min_y:max_y], Jalpha
 
 
 # Estimation of the Kernel

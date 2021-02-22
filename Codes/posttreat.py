@@ -12,7 +12,7 @@ import sys
 import matplotlib.pyplot as plt
 import math
 from scipy import interpolate
-from dataprocess import Blurr
+from Codes.dataprocess import Blurr
 
 
 def Display(K_init, K_alpha, Ninterp = 100):

@@ -12,7 +12,7 @@ from numpy.fft import fft2, ifft2, fftshift
 import math
 
 # Image reconstruction
-def Estimator_TV(x_blurred,K,alpha,mu,niter=100):
+def Estimator_TV(x_blurred,K,mu,niter=100):
     #Local parameters and matrix sizes
     M,_    = K.shape
     M      = M//2
@@ -21,6 +21,8 @@ def Estimator_TV(x_blurred,K,alpha,mu,niter=100):
     max_x  = Nx//2+M-1
     min_y  = Ny//2+1-M-2
     max_y  = Ny//2+M-1
+    # Energy
+    En     = np.zeros(niter)
     # Kernel padding, shift, fft
     K_padd = np.zeros((Nx,Ny))
     K_padd[min_x:max_x,min_y:max_y] = K
@@ -30,7 +32,7 @@ def Estimator_TV(x_blurred,K,alpha,mu,niter=100):
     #
     # Primal dual algorithm
     # Parameters
-    tau = 1/(math.sqrt(8)+mu)# manually computed
+    tau = 1/(math.sqrt(8)+1)# manually computed
     # initialisation
     v_init = np.zeros((Nx,Ny))
     v_bar  = v_init.copy()
@@ -40,14 +42,14 @@ def Estimator_TV(x_blurred,K,alpha,mu,niter=100):
     py     = np.zeros((Nx,Ny))
     #
     # local function projection on B(alpha)
-    def projB(px,py,alpha) :
+    def projB(px,py,mu) :
         n,m = px.shape
         l,p = py.shape
         norm     = np.sqrt(px**2+py**2)
-        cond     = norm>alpha
+        cond     = norm>mu
         ppx, ppy = np.zeros((n,m)), np.zeros((l,p))
-        ppx[cond] = alpha*px[cond]/norm[cond]
-        ppy[cond] = alpha*py[cond]/norm[cond]
+        ppx[cond] = mu*px[cond]/norm[cond]
+        ppy[cond] = mu*py[cond]/norm[cond]
         return ppx, ppy
     # local divh
     def divh(px,py):
@@ -62,19 +64,19 @@ def Estimator_TV(x_blurred,K,alpha,mu,niter=100):
         ddy[:-1] = v[1:,:]-v[:-1,:]
         return ddx, ddy
     #
-    for _ in range(niter):
+    for i in range(niter):
         #
         # Gradient step p
         dxu,dyu = nablah(v_bar) 
         px = px + tau*dxu
         py = py + tau*dyu 
-        # Projection on B(\alpha)
-        px, py = projB(px,py,alpha)
+        # Projection on B(mu)
+        px, py = projB(px,py,mu)
         #
         # Gradient step v
         nablap = divh(px,py) 
         fftv = fft2(v) 
-        fftnx = mu*np.conjugate(fftK)*(fftK*fftv-fftx) 
+        fftnx = np.conjugate(fftK)*(fftK*fftv-fftx) 
         nablax = np.real(ifft2(fftnx)) 
         nablaF = nablap+nablax
         # projection on [0,1]
@@ -84,5 +86,11 @@ def Estimator_TV(x_blurred,K,alpha,mu,niter=100):
         # relaxation
         v_bar =2*v -v_old
         v_old = v
-
-    return v_bar
+        #
+        # Energy  with Parceval formula
+        conv1 = np.real(ifft2(fftK*fftv))
+        conv1 = fftshift(conv1)
+        norm1 = np.abs(divh(v_bar,v_bar))
+        En[i] = 0.5*np.linalg.norm(conv1-x_blurred)**2 \
+                + mu*np.sum(norm1)
+    return v_bar, En

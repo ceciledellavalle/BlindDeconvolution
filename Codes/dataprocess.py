@@ -55,7 +55,6 @@ def Blurr(x_init,K):
     m,n   = x_init.shape
     p,q   = K.shape
     K_pad = np.pad(K, ((m//2-p//2,m//2-p//2),(n//2-q//2,n//2-q//2)), 'constant')
-    print(K_pad.shape)
     # Perform fft
     fr  = fft2(x_init)
     fr2 = fft2(K_pad) 
@@ -65,7 +64,7 @@ def Blurr(x_init,K):
     x_blurred = np.roll(x_blurred, -int(n//2+1),axis=1)
     return x_blurred
 
-def Add_noise(x_init,noise_level=0.05):
+def Add_noise(x_init,noise_level=0.01):
     """
     Add Gaussian white noise
     Parameters
@@ -77,8 +76,10 @@ def Add_noise(x_init,noise_level=0.05):
         x_noise (numpy array): output image
     """
     # Add noise
-    m,n = x_init.shape
+    m,n     = x_init.shape
     x_noise = x_init.copy()
-    x_noise += np.median(x_init)*noise_level*(2*np.random.randn(m,n)-1)
+    vn      = np.random.randn(m,n)
+    vn      = vn/np.linalg.norm(vn)
+    x_noise += np.median(x_init)*noise_level*vn
     return x_noise
     
