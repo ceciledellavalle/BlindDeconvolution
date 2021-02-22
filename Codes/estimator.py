@@ -111,7 +111,7 @@ def Estimator_Lap(M,x_init,x_blurred,alpha,mu,niter=100,nesterov=False):
     fig, (ax0, ax1) = plt.subplots(1, 2, figsize=(5,3))
     ax0.loglog(Jalpha)
     ax0.set_title("Fonction J à minimiser")
-    ax1.loglog(ngrad)
+    ax1.plot(ngrad)
     plt.show()
     return x_k[min_x:max_x,min_y:max_y]
 
