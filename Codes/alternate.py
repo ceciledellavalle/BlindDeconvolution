@@ -1,7 +1,10 @@
 """
 Kernel estimation Function
 ---------
-    Alternating     : algorithm to compute blind deconvolution by alternating minimization method
+    AlternatingBD   : algorithm to compute blind deconvolution by alternating minimization method
+    Estimator_TV    : Chambolle-Pock algorithm for deblurring denoising
+    Estimator_Lap   : FB algorithm with regularization of Tikhonov type to estimate a convolution kernel
+
 @author: Cecile Della Valle
 @date: 23/02/2021
 """
@@ -15,13 +18,31 @@ import math
 import sys
 # Local import
 from Codes.simplex import Simplex
+from Codes.display import Display_ker
+from Codes.display import Display_im
 
 
 def AlternatingBD(K_in,x_in,x_blurred,alpha,mu,\
                   alte=10,niter_TV=200,niter_Lap =200,\
                   proj_simplex=False):
     """
-    Alternating estimation of a blind deconvolutiomn.
+    Alternating estimation of a blind deconvolution.
+    Parameters
+    ----------
+        K_in      (numpy array) : initial kernel of size (2M,2M)
+        x_in     (numpy array) : initial image of size (Nx,Ny)
+        x_blurred (numpy array) : blurred and noisy image of size (Nx,Ny)
+        alpha           (float) : regularisation parameter for Tikhonov type regularization
+        mu              (float) : regularisation parameter for TV
+        alte              (int) : number of alternating iterations
+        niter_TV          (int) : number of iterations for image reconstruction
+        niter_TV          (int) : number of iterations for kernel reconstruction
+        proj_simplex     (bool) : boolean, True if projection of kernel on simplex space
+    Returns
+    --------
+        Ki      (numpy array) : final estimated kernel of size (2M,2M)
+        xi      (numpy array) : final deblurred denoised image of size (Nx,Ny)
+        Etot    (numpy array) : primal energy through every FB step
     """
     Etot     = np.zeros(alte*niter_Lap+alte*niter_TV)
     Ki       = K_in.copy()
@@ -33,7 +54,7 @@ def AlternatingBD(K_in,x_in,x_blurred,alpha,mu,\
         xold        = xi.copy()
         xi,E2,resx  = Estimator_TV(Ki,xi,x_blurred,mu,niter=niter_TV)
         # display
-        Display_im(xold,xi)
+        Display_im(xi,xold)
         # energy
         Etot[i*(niter_Lap+niter_TV):i*niter_Lap+(i+1)*niter_TV] = E2 +resK
         print("Kernel estimation #",i)
@@ -42,7 +63,7 @@ def AlternatingBD(K_in,x_in,x_blurred,alpha,mu,\
         Ki,E1,resK = Estimator_Lap(Ki,xi,x_blurred,alpha,niter=niter_Lap,\
                                     simplex=proj_simplex)
         # display
-        Display(Kold,Ki)
+        Display_ker(Ki,Kold)
         # energy
         Etot[(i+1)*niter_TV+i*niter_Lap:(i+1)*(niter_Lap+niter_TV)] = E1 +resx
     #
@@ -50,6 +71,23 @@ def AlternatingBD(K_in,x_in,x_blurred,alpha,mu,\
         
 # Image reconstruction
 def Estimator_TV(K,x_zero,x_blurred,mu,niter=100):
+    """
+    De-blurring, de-noising Chambolle-Pock algorithm
+    Regularization with Total Varaition TV
+    Fista Algorithm
+    Parameters
+    ----------
+        K         (numpy array) : kernel of size (2M,2M)
+        x_zero    (numpy array) : initial image of size (Nx,Ny)
+        x_blurred (numpy array) : blurred and noisy image of size (Nx,Ny)
+        mu              (float) : regularisation parameter
+        niter             (int) : number of iterations
+    Returns
+    -------
+        v_bar      (numpy array): denoised deblurred image of size (Nx,Ny)
+        En         (numpy array): total energy of the deconvolution denoising criterion
+        res        (numpy array): TV of v_bar
+    """
     #Local parameters and matrix sizes
     M,_    = K.shape
     M      = M//2
@@ -80,11 +118,9 @@ def Estimator_TV(K,x_zero,x_blurred,mu,niter=100):
     #
     # local function projection on B(alpha)
     def projB(px,py,mu) :
-        n,m = px.shape
-        l,p = py.shape
         norm     = np.sqrt(px**2+py**2)
         cond     = norm>mu
-        ppx, ppy = np.zeros((n,m)), np.zeros((l,p))
+        ppx, ppy = px.copy(), py.copy()
         ppx[cond] = mu*px[cond]/norm[cond]
         ppy[cond] = mu*py[cond]/norm[cond]
         return ppx, ppy
@@ -137,19 +173,23 @@ def Estimator_TV(K,x_zero,x_blurred,mu,niter=100):
 # Estimation of the Kernel
 def Estimator_Lap(K_zero,x_init,x_blurred,alpha,niter=100,simplex=False,nesterov=False):
     """
-    Estimation d'un noyau de convolution par méthode variationnelle
-    Régularisation par convolution avec Laplacien
+    Estimation of a kernel of convolution, knowing blurred image and true image
+    Regularization of Tikhonov type with derivative
     Fista Algorithm
     Parameters
     ----------
-        M (int)                : size parameter of 2D-Kernel (2M)^2
-        x_init (numpy array)   : image size c x Nx x Ny
-        x_blurred (numpy array): blurred image c x Nx x Ny
-        alpha (float)          : regularisation parameter
-        niter (int)            : number of iterations
+        K_zero    (numpy array) : initial kernel of size (2M,2M)
+        x_init    (numpy array) : true image of size (Nx,Ny)
+        x_blurred (numpy array) : blurred and noisy image f size (Nx,Ny)
+        alpha           (float) : regularisation parameter
+        niter             (int) : number of iterations
+        simplex          (bool) : boolean, True if projection of kernel on simplex space
+        nesterov         (bool) : boolean, True if nesterov acceleration
     Returns
     -------
-        K (numpy array): the estimated Kernel
+        x_k          (numpy array): the estimated Kernel of size (2M,2M)
+        Jalpha       (numpy array): energy of the deconvolution criterion
+        res          (numpy array): regularization of Tikhonov type
     """
     # Local parameters
     M      = K_zero.shape[0]//2
@@ -224,54 +264,3 @@ def Estimator_Lap(K_zero,x_init,x_blurred,alpha,niter=100,simplex=False,nesterov
     res = 0.5*alpha*np.linalg.norm(conv2)**2 
     return x_k[min_x:max_x,min_y:max_y], Jalpha, res
     
-def Display_im(x_i,x_r):
-    fig, (ax0, ax1) = plt.subplots(1, 2, figsize=(6,4))
-    # initial image
-    ax0.imshow(x_i,cmap='gray')
-    ax0.set_title('Initial')
-    ax0.axis('off')
-    # Reconstruct image
-    ax1.imshow(x_r,cmap='gray')
-    ax1.set_title('Reconstruct image')
-    ax1.axis('off')
-    # Show plot
-    plt.show()
-    # Error computation and dispay
-    norm     = np.linalg.norm(x_i)
-    error_l2 = np.linalg.norm(x_r-x_i)/norm
-    print("Erreur |x_pred - x_true|_2 :",error_l2)
-    
-def Display(K_init, K_alpha):
-    
-    """
-    Compare initial Kernel and reconstruct Kernel with regularization parameter alpha.
-    Kernel diagonal are interpolatre on finer grid.
-
-    Parameters
-    ----------
-        K_init    (numpy array) : initial kernel (2Mx2M size)
-        K_alpha   (numpy array) : reconstruct kernel (2Mx2M size)
-    Returns
-    ----------
-        -
-    """
-    # define graph
-    fig, (ax1, ax2, ax3) = plt.subplots(1, 3 , figsize=(5,3))
-    # Initial Kernel
-    ax1.imshow(K_init)
-    ax1.set_title('Kernel')
-    ax1.axis('off')
-    # Reconstruct Kernel
-    ax2.imshow(K_alpha)
-    ax2.set_title('Reconstruct')
-    ax2.axis('off')
-    # Reconstruct Kernel
-    ax3.imshow(K_alpha-K_init)
-    ax3.set_title('Comparison')
-    ax3.axis('off')
-    # Show plot
-    plt.show()
-    # Error computation and dispay
-    norm     = np.linalg.norm(K_init)
-    error_l2 = np.linalg.norm(K_alpha-K_init)/norm
-    print("Erreur |K_pred - K_true|_2 :",error_l2)
