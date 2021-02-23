@@ -77,11 +77,11 @@ def violetBD(K_in,x_in,x_blurred,\
     d_pad  = np.zeros((Nx,Ny))
     d_pad[Nx//2-1:Nx//2+2,Ny//2-1:Ny//2+2] = d
     # rescaling param
-    regK   = alpha/M**2
+    regK   = alpha*(2*M)**2
     regx   = mu/Nx/Ny
     # gradient step
     taux = 10**-4 # image FB step size
-    tauK = 10**-9 # kernel FB step size
+    tauK = 10**-8 # kernel FB step size
     taup = 10**-4 # dual function FB step size
     #
     for i in range(niter):

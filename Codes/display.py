@@ -85,7 +85,7 @@ def Display_epd(Ep,Ed):
         -
     """
     # define graph
-    fig, (ax1, ax2) = plt.subplots(1, 2 , figsize=(7,7))
+    fig, (ax1, ax2) = plt.subplots(1, 2 , figsize=(9,4))
     # Initial Kernel
     ax1.plot(Ep,'+')
     ax1.set_title('Primal energy')
