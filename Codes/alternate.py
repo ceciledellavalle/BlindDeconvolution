@@ -44,29 +44,33 @@ def AlternatingBD(K_in,x_in,x_blurred,alpha,mu,\
         xi      (numpy array) : final deblurred denoised image of size (Nx,Ny)
         Etot    (numpy array) : primal energy through every FB step
     """
+    # initialisation
     Etot     = np.zeros(alte*niter_Lap+alte*niter_TV)
     Ki       = K_in.copy()
     xi       = x_in.copy()
     _,_,resK = Estimator_Lap(Ki,xi,x_blurred,alpha,niter=1)
+    # rescaling
+    M        = Ki.shape[0]//2
+    Nx,Ny    = xi.shape
+    regK     = alpha*(2*M)**2
+    regx     = mu/Nx/Ny
     for i in range(alte):
-        print("Image estimation #",i)
         # First estimation of image
         xold        = xi.copy()
-        xi,E2,resx  = Estimator_TV(Ki,xi,x_blurred,mu,niter=niter_TV)
-        # display
-        Display_im(xi,xold)
+        xi,E2,resx  = Estimator_TV(Ki,xi,x_blurred,regx,niter=niter_TV)
         # energy
         Etot[i*(niter_Lap+niter_TV):i*niter_Lap+(i+1)*niter_TV] = E2 +resK
-        print("Kernel estimation #",i)
         # Second estimation of Kernel
         Kold = Ki.copy()
-        Ki,E1,resK = Estimator_Lap(Ki,xi,x_blurred,alpha,niter=niter_Lap,\
+        Ki,E1,resK = Estimator_Lap(Ki,xi,x_blurred,regK,niter=niter_Lap,\
                                     simplex=proj_simplex)
-        # display
-        Display_ker(Ki,Kold)
         # energy
         Etot[(i+1)*niter_TV+i*niter_Lap:(i+1)*(niter_Lap+niter_TV)] = E1 +resx
     #
+    # display
+    Display_ker(Ki,K_in)
+    # display
+    Display_im(xi,xold)
     return Ki,xi,Etot
         
 # Image reconstruction
