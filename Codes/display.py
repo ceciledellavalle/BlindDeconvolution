@@ -27,19 +27,19 @@ def Display_im(x_out,x_true,mysize=(6,4)):
     # defimne graph   
     fig, (ax0, ax1) = plt.subplots(1, 2, figsize=mysize)
     # initial image
-    ax0.imshow(x_true,cmap='gray')
-    ax0.set_title('True')
+    ax0.imshow(x_out,cmap='gray')
+    ax0.set_title('image #1')
     ax0.axis('off')
     # Reconstruct image
-    ax1.imshow(x_out,cmap='gray')
-    ax1.set_title('Reconstruct image')
+    ax1.imshow(x_true,cmap='gray')
+    ax1.set_title('image #2')
     ax1.axis('off')
     # Show plot
     plt.show()
     # Error computation and dispay
     norm     = np.linalg.norm(x_true)
     error_l2 = np.linalg.norm(x_out-x_true)/norm
-    print("Erreur |x_pred - x_true|_2 :",error_l2)
+    print("Erreur |x_pred - x_true|_2 :{:.4f}".format(error_l2))
     
 def Display_ker(K_alpha,K_init,mysize=(5,3)):
     """
@@ -56,11 +56,11 @@ def Display_ker(K_alpha,K_init,mysize=(5,3)):
     fig, (ax1, ax2, ax3) = plt.subplots(1, 3 , figsize=mysize)
     # Initial Kernel
     ax1.imshow(K_init)
-    ax1.set_title('Kernel')
+    ax1.set_title('K1')
     ax1.axis('off')
     # Reconstruct Kernel
     ax2.imshow(K_alpha)
-    ax2.set_title('Reconstruct')
+    ax2.set_title('K2')
     ax2.axis('off')
     # Reconstruct Kernel
     ax3.imshow(K_alpha-K_init)
@@ -71,9 +71,9 @@ def Display_ker(K_alpha,K_init,mysize=(5,3)):
     # Error computation and dispay
     norm     = np.linalg.norm(K_init)
     error_l2 = np.linalg.norm(K_alpha-K_init)/norm
-    print("Erreur |K_pred - K_true|_2 :",error_l2)
+    print("Erreur |K_pred - K_true|_2 : {:.4f} ".format(error_l2))
     
-def Display_epd(Ep,Ed):
+def Display_epd(EpK,Epx,Ed):
     """
     Compare initial Kernel and reconstruct Kernel with regularization parameter alpha.
     Parameters
@@ -85,12 +85,17 @@ def Display_epd(Ep,Ed):
         -
     """
     # define graph
-    fig, (ax1, ax2) = plt.subplots(1, 2 , figsize=(9,4))
-    # Initial Kernel
-    ax1.plot(Ep,'+')
+    fig, (ax0, ax1, ax2) = plt.subplots(1, 3 , figsize=(12,4))
+    # Kernel
+    ax0.plot(EpK,'r',label='kernel')
+    ax0.set_title('Primal energy')
+    ax0.legend()
+    # image
+    ax1.plot(Epx,'k',label='image')
     ax1.set_title('Primal energy')
-    # Reconstruct Kernel
-    ax2.plot(Ed,'+')
+    ax1.legend()
+    # auxiliary variable
+    ax2.plot(Ed)
     ax2.set_title('Dual energy')
     # Show plot
     plt.show()

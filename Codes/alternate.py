@@ -48,12 +48,13 @@ def AlternatingBD(K_in,x_in,x_blurred,alpha,mu,\
     Etot     = np.zeros(alte*niter_Lap+alte*niter_TV)
     Ki       = K_in.copy()
     xi       = x_in.copy()
-    _,_,resK = Estimator_Lap(Ki,xi,x_blurred,alpha,niter=1)
     # rescaling
     M        = Ki.shape[0]//2
     Nx,Ny    = xi.shape
     regK     = alpha*(2*M)**2
     regx     = mu/Nx/Ny
+    # energy for kernel init
+    _,_,resK = Estimator_Lap(Ki,xi,x_blurred,regK,niter=1)
     for i in range(alte):
         # First estimation of image
         xold        = xi.copy()
@@ -68,9 +69,9 @@ def AlternatingBD(K_in,x_in,x_blurred,alpha,mu,\
         Etot[(i+1)*niter_TV+i*niter_Lap:(i+1)*(niter_Lap+niter_TV)] = E1 +resx
     #
     # display
-    Display_ker(Ki,K_in)
+    Display_ker(Ki,K_in,mysize=(8,4))
     # display
-    Display_im(xi,xold)
+    Display_im(xi,xold,mysize=(9,5))
     return Ki,xi,Etot
         
 # Image reconstruction
@@ -111,7 +112,7 @@ def Estimator_TV(K,x_zero,x_blurred,mu,niter=100):
     #
     # Primal dual algorithm
     # Parameters
-    tau = 0.01/(math.sqrt(8)+1)# manually computed
+    tau = 0.1/(math.sqrt(8)+1)# manually computed
     # initialisation
     v_init = x_zero
     v_bar  = v_init.copy()
@@ -130,15 +131,22 @@ def Estimator_TV(K,x_zero,x_blurred,mu,niter=100):
         return ppx, ppy
     # local divh
     def divh(px,py):
-        dd = np.zeros((Nx,Ny))
-        dd[1:,:] += px[1:,:]-px[:-1,:]
-        dd[:,1:] += py[:,1:]-py[:,:-1]
+        Nx,Ny      = px.shape
+        dd         = np.zeros((Nx,Ny))
+        dd[0,:]   += -px[0,:]
+        dd[1:-1,:]+= px[:-2,:]-px[1:-1,:]
+        dd[-1,:]  += px[-1,:]
+        dd[:,0]   += -py[:,0]
+        dd[:,1:-1]+= py[:,:-2]-py[:,1:-1]
+        dd[:,-1]  += py[:,-1]
         return dd
+        
     # local nablah
     def nablah(v):
+        Nx,Ny    = v.shape
         ddx, ddy = np.zeros((Nx,Ny)), np.zeros((Nx,Ny))
-        ddx[:-1] = v[1:,:]-v[:-1,:]
-        ddy[:-1] = v[1:,:]-v[:-1,:]
+        ddx[:-1,:] = v[1:,:]-v[:-1,:]
+        ddy[:,:-1] = v[:,1:]-v[:,:-1]
         return ddx, ddy
     #
     for i in range(niter):
@@ -220,11 +228,8 @@ def Estimator_Lap(K_zero,x_init,x_blurred,alpha,niter=100,simplex=False,nesterov
     fft_xb = fft2(fftshift(x_blurred))
     fft_d  = fft2(d_pad)
     # compute gradient step as 2/L with L the lipschitz constant
-    grad   = np.conjugate(fft_xi)*fft_xi\
-            + alpha*np.conjugate(fft_d)*fft_d
-    grad   = np.real(ifft2(grad))
-    Lip    = np.linalg.norm(grad,ord=2)
-    tau    = 0.001*2/Lip
+    Lip    = np.linalg.norm(fft_xi**2) + alpha*np.linalg.norm(fft_d**2)
+    tau    = 2/Lip
     for i in range(niter):
         # Step 1
         # calcul du gradient

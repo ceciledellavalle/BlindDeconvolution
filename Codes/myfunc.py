@@ -50,8 +50,8 @@ def nablah(v):
     """
     Nx,Ny    = v.shape
     ddx, ddy = np.zeros((Nx,Ny)), np.zeros((Nx,Ny))
-    ddx[:-1] = v[1:,:]-v[:-1,:]
-    ddy[:-1] = v[1:,:]-v[:-1,:]
+    ddx[:-1,:] = v[1:,:]-v[:-1,:]
+    ddy[:,:-1] = v[:,1:]-v[:,:-1]
     return ddx, ddy 
     
 # divh
@@ -59,9 +59,13 @@ def divh(px,py):
     """
     Divergence of (Nx,Ny)^2 vectors, dual of gradient.
     """
-    Nx,Ny     = px.shape
-    dd        = np.zeros((Nx,Ny))
-    dd[1:,:] += px[1:,:]-px[:-1,:]
-    dd[:,1:] += py[:,1:]-py[:,:-1]
+    Nx,Ny      = px.shape
+    dd         = np.zeros((Nx,Ny))
+    dd[0,:]   += -px[0,:]
+    dd[1:-1,:]+= px[:-2,:]-px[1:-1,:]
+    dd[-1,:]  += px[-1,:]
+    dd[:,0]   += -py[:,0]
+    dd[:,1:-1]+= py[:,:-2]-py[:,1:-1]
+    dd[:,-1]  += py[:,-1]
     return dd
     

@@ -76,10 +76,10 @@ def Add_noise(x_init,noise_level=0.01):
         x_noise (numpy array): output image
     """
     # Add noise
-    m,n     = x_init.shape
-    x_noise = x_init.copy()
-    vn      = np.random.randn(m,n)
-    vn      = vn/np.linalg.norm(vn)
-    x_noise += np.median(x_init)*noise_level*vn
+    m,n      = x_init.shape
+    x_noise  = x_init.copy()
+    vn       = np.random.randn(m,n)
+    vn       = vn/np.linalg.norm(vn)
+    x_noise += np.linalg.norm(x_init)*noise_level*vn
     return x_noise
     
