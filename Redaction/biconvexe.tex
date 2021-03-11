@@ -75,12 +75,12 @@
 \begin{figure}[h]
 \includegraphics[scale=0.6]{figures/blurred}
 \includegraphics[scale=0.6]{figures/noisy}
-\caption{Image 1 correspond a l'image convoluée sur la premiere ligne, bruitée sur la deuxieme ligne (avec une std de 0.05, le bruit est a peine visible à l'oeil nu sur une image convoluée). L'image 2 est toujours l'image de référence. C'est a partir des images de la première colonne que l'on va initialiser les algotithmes, et on espère obtenir une erreur finale meilleure que respectivement $26.82\%$ et $28.04\%$.}
+\caption{Sur la première ligne, l'image 1 correspond a l'image convoluée. Sur la deuxième ligne, l'image 1 correspond a l'image convoluée et bruitée  (avec une std de 0.05, le bruit est a peine visible à l'oeil nu sur une image convoluée). L'image 2 est toujours l'image de référence. C'est a partir des images de la première colonne que l'on va initialiser les algotithmes, et on espère obtenir une erreur finale meilleure que respectivement $26.82\%$ sans bruit et $28.04\%$ avec bruit.}
 \end{figure}
 %
 \begin{figure}[h]
 \includegraphics[scale=0.6]{figures/kernel}
-\caption{Le noyau exact et un noyau proche pour l'initialisation de l'algorithme (de même centre mais un peu plus régulier).
+\caption{Le noyau exact K1 et un noyau proche K2 pour l'initialisation de l'algorithme (de même centre mais un peu plus large).
 L'erreur initiale sur le noyau s'élève donc à environ $28\%$.}
 \end{figure}
 
@@ -93,7 +93,7 @@ avec l' a priori de noyau de convolution régulier,
 \frac{1}{2} \| g - K * u\|^2 
 + \frac{1}{2} \alpha \| D K \|^2
 + \langle \nabla u , v \rangle
-+ \chi_{B,\mu}(v)
+- \chi_{B,\mu}(v)
 \; .
 \]
 
@@ -112,30 +112,32 @@ La fonction à minimiser peut alors se réécrire
 + \frac{1}{2} \alpha \| D K \|^2
 + \Sigma(K)
 +\langle \nabla u , v \rangle
-+ \chi_{B,\mu}(v)
+- \chi_{B,\mu}(v)
 \; .
 \]
 
 On note
 
 \[
-L =\frac{1}{2} \| g - K * u\|^2 
+L(u,v,K)
+ =\frac{1}{2} \| g - K * u\|^2 
 + \frac{1}{2} \alpha \| D K \|^2
 + \langle \nabla u , v \rangle
+- \chi_{B,\mu}(v)
 \]
 
 On souhaite comparer deux stratégies pour résoudre ce problème :
 \begin{itemize}
     \item Minimisation alternée : on scinde la fonction à minimiser en une partie qui dépend de l'image $u$ 
-    et une partie qui dépend du noyau $k$, les deux fonctions sont minimisées jusqu'à convergence, alternativement.
-    \item Minimisation par pas de descente alterné (PDA) : l'algorithme alterne les pas de descente entre l'image $u$, le noyau $k$ et la variable auxiliaire (ou duale) $v$.
+    et une partie qui dépend du noyau $K$, les deux fonctions sont minimisées jusqu'à convergence, alternativement.
+    \item Minimisation par pas de descente alterné (PDA) : l'algorithme alterne les pas de descente entre l'image $u$, le noyau $K$ et la variable auxiliaire (ou duale) $v$.
 \end{itemize}
 
 Pour chacune de ces deux méthodes, on effectue les trois tests suivants :
 \begin{itemize}
-     \item Initialisation par le noyau exacte, bruit std = $0.05$  (cas 1);
-     \item Initialisation par un noyau approché, pas de bruit (cas 2) ;
-      \item Initialisation par un noyau approché, bruit std = $0.05$ (cas 3) ;
+     \item Initialisation par le noyau exacte, bruit std = $0.05$, $(\alpha,\mu) = (0,5)$  (cas 1);
+     \item Initialisation par un noyau approché, pas de bruit, $(\alpha,\mu) = (1,0.5)$  (cas 2) ;
+      \item Initialisation par un noyau approché, bruit std = $0.05$, $(\alpha,\mu) = (1,5)$  (cas 3) ;
 \end{itemize}
 
 
@@ -168,10 +170,14 @@ Dans le tableau~\ref{tab:compare}, on indique les erreurs finales des deux algor
                & 0.0069  & 0.2667
                & 0.2787   &0.2606 
     \end{tabular}
-    \caption{Normalized error of reconstruction $\| x^\delta -x \| /\|x\|$ obtained for different value of noise standart deviation $\delta$.
-    The error for the Kalman Filter are of the order of $\sqrt{\delta} $ according to theory, but in practice finding the parameter to reach such precision can be difficult.}
     \label{tab:compare}
 \end{table}
+
+\begin{remarque}
+J'ai retiré la projection sur Simplex finalement car les algorithmes ne marchaient pas bien. 
+En fait le résultat de la projection donnait des noyaux irréguliers.
+A la place j'ai projeté sur un hypercube avec une valeur max et une valeur min, cela avait l'avantage d'être simple à implémenter, d'avoir un bon comportement et de rester cohérent avec le problème initial (?).
+\end{remarque}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Minimisation alternée}
@@ -184,10 +190,11 @@ E_2(u) = \frac{1}{2} \| g - K * u\|^2 +  \mu \text{TV} (u)
 \end{align}
 
 Dans la minimisation alternée, on considere d'abord la minimisation de $E_2$ 
-pour reconstruire l'image $u$, approche variationnelle avec régularisation TV,
- puis de $E_1$ pour reconstruire le noyau $K$, approche variationnelle pour la reconstruction d'un noyau régulier.
-On alterne 5 fois entre chaque minimisation, chacune a 200 pas d'itérations.
-Les coefficient $\alpha$ et $\mu$ sont ajustés à la main.
+pour reconstruire l'image $u$. 
+La minimisation est obtenur par un algorithme de Chambolle-Pock.
+ Puis on minimise $E_1$ pour reconstruire le noyau $K$ avec un forward-backward.
+On alterne 5 fois entre chaque minimisation, chacune a 200 pas d'itérations, donc en fait on est pas complètement à convergence..
+
 
 \begin{figure}[h]
 \includegraphics[scale=0.8]{figures/altrn-cas1-kernel}
@@ -207,7 +214,7 @@ Les coefficient $\alpha$ et $\mu$ sont ajustés à la main.
 \includegraphics[scale=0.8]{figures/altrn-cas3-kernel}
 \includegraphics[scale=0.6]{figures/altrn-cas3-image}
 \includegraphics[scale=0.6]{figures/altrn-cas3-energy}
-\caption{Algorithme de minimisation alterné. Reconstruction correspondant au cas 3  (initialisation noyau proche,bruit std 0.05). Parametres : $(\alpha,\mu) =(1,0.5)$}
+\caption{Algorithme de minimisation alterné. Reconstruction correspondant au cas 3  (initialisation noyau proche,bruit std 0.05). Parametres : $(\alpha,\mu) =(1,5)$}
 \end{figure}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -216,49 +223,44 @@ Les coefficient $\alpha$ et $\mu$ sont ajustés à la main.
 
 
 Pour résoudre ce probleme d'optimisation on se propose de tester l'algorithme suivant,
-
-
 \begin{align}
 & K_{k+1} = \text{prox}_{\Sigma} \; (K_k - \gamma \partial_K L(u_k,K_k,v_k) \; )\\
-& v_{k+1}         = \text{prox}_{B_\mu} \; (v_k + \sigma \partial_v L (\bar{u}_{k+1},K_{k+1},v_k) \; )\\
-& u_{k+1} = \text{proj}_{B_1} \; (u_k - \tau \partial_u L(u_k,K_k,v_k) \; )\\
+& u_{k+1} = \text{proj}_{B_1} \; (u_k - \tau \partial_u L(u_k,K_{k+1},v_k) \; )\\
+& v_{k+1}         = \text{prox}_{B_\mu} \; (v_k + \sigma \partial_v L (\bar{u}_k,K_{k+1},v_k) \; )\\
 &\bar{u}_{k+1} = u_{k+1} + \theta (u_{k+1} - u_k) \quad \text{(relaxation)}
 \end{align}
-
-
 On écrit alors les dérivées partielles de $L$,
-
 \begin{align}
-& \partial_u L(u_k,K_k,v_k) \; ) = \text{div} \cdot v_k - \tilde{K} * (g-K*u)\\
-& \partial_K L(\tilde{u}_{k+1},K_k,v_k) \; ) = - (g-K*u)*\tilde{u} + \alpha D^TDK \\
-& \partial_v L (u_{k+1},K_{k+1},v_k) \; ) =  \nabla u
+& \partial_K L(u_k,K_k,v_k) \; ) = - (g-K_k*u_k)*\tilde{u}_k+ \alpha D^TDK_k \\
+& \partial_u L(u_k,K_{k+1},v_k) \; ) = \text{div} \cdot v_k - \tilde{K}_k * (g-K_k*u_k)\\
+& \partial_v L (\bar{u}_k,K_{k+1},v_k) \; ) =  \nabla \bar{u}_k
 \end{align}
-
+Pour les opérateurs $\nabla$ et $\div$ j'ai repris les opérateurs discrets du docuement 120415-deconvolution que tu avais écrit.
 
 On trace les énergies primales et duales au cours de la minimisation
 
 \begin{align}
-& Ep = \frac{1}{2} \| g - K * u\|^2 
-+ \frac{1}{2} \alpha \| D K \|^2
-+ \mu. \text{TV} (u) \\
-\\
-& Ed = - \langle \nabla u ,v \rangle - \chi_{B,\mu}(v)
+& Ep_K = \frac{1}{2} \| g - K * u\|^2 
++ \frac{1}{2} \alpha \| D K \|^2\\
+& Ep_x = \frac{1}{2} \| g - K * u\|^2 
++ \mu. \text{TV} (u)  \\
+& Ed = - \langle \nabla u ,v \rangle 
 \end{align}
 
 L'algorithme est très sensible aux pas de descente choisi.
-Soit $\ell_1$ le coefficient de Lipshitz de $E_1$, le pas de descente pour le noyau $k$
+Soit $\ell_1$ le coefficient de Lipshitz de $E_1$, le pas de descente pour le noyau $K$
 est choisi par
 \[
-\tau = c \cdot \frac{2}{\ell_1} = \frac{1}{\|u\|^2 + \alpha \|D\|^2} \quad 0<c \leq 1 \; .
+\tau = c \cdot \frac{2}{\ell_1} \leq  c \cdot \frac{1}{\|u\|^2 + \alpha \|D\|^2} \quad 0<c \leq 1 \; .
 \]
 En effet on ne veut pas dépasser la valeur limite du pas de descente pour assurer la convergence de la descente de gradient, mais on ne veut pas nécessairement effectuer un pas optimal non plus, par exemple si le noyau est initialisé de façon exacte.
-On choisit donc la stratégie suivante, à chaque pas de temps le coeffecient $c$ est multiplié par $0.98$. La valeur initiale est ajustée à la main. Cela permet notamment de choisir un $c$ supérieur a $1$, car sinon on observe que le noyau est très peu modifié par rapport à l'image.
-En fait cela marche plutôt bien.
-
-Pour le pas de descente de l'image et de la variable auxilière, on respecte la condition de convergence de Chambolle-Pock
+On choisit donc la stratégie suivante, à chaque pas de temps le coeffecient $c$ est multiplié par $0.98$. La valeur initiale est ajustée à la main. Cela permet notamment de choisir un $c$ supérieur a $1$. En effet j'ai choisi cette stratégie quand le noyau est très peu modifié par rapport à l'image, cela améliore nettement la convergence.
+Pour le pas de descente de l'image et de la variable auxilière cette fois, on respecte la condition de convergence de Chambolle-Pock
 \[
-\sigma_u \sigma_v <\frac{1}{L^2} =\left(\frac{1}{\sqrt{8} + \| k \|^2} \right)^2
+\sigma_u \sigma_v <\frac{1}{L^2} \leq \left(\frac{1}{\sqrt{8} + \| k \|^2} \right)^2
+\; .
 \]
+J'ai testé plusieurs stratégies, mais mettre le pas "optimal" marchait mieux jusqu'à présent.
 
 \begin{figure}[h]
 \includegraphics[scale=0.8]{figures/algov-cas1-kernel}
@@ -278,7 +280,7 @@ Pour le pas de descente de l'image et de la variable auxilière, on respecte la 
 \includegraphics[scale=0.8]{figures/algov-cas3-kernel}
 \includegraphics[scale=0.6]{figures/algov-cas3-image}
 \includegraphics[scale=0.6]{figures/algov-cas3-energy}
-\caption{Algorithme de pas de descente alterné PDA. Reconstruction correspondant au cas 3  (initialisation noyau proche,bruit std 0.05). Parametres : $(\alpha,\mu) =(1,0.5)$}
+\caption{Algorithme de pas de descente alterné PDA. Reconstruction correspondant au cas 3  (initialisation noyau proche,bruit std 0.05). Parametres : $(\alpha,\mu) =(1,5)$}
 \end{figure}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
