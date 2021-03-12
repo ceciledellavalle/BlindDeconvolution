@@ -18,9 +18,100 @@ import random
 import os
 from PIL import Image
 from scipy import signal
+from skimage.data import shepp_logan_phantom
+from skimage.transform import radon, rescale
+# local import
+from Codes.simplex import Simplex
+from Codes.display import Display_ker
 
-# 
-def DataLoader(file_name,im_name):
+#
+def DataGen(M=40,gauss=(0.15, 0.0),noise=0.05):
+    #================================================================
+    # KERNEL
+    #================================================================
+    # Kernel generator
+    M             = 40
+    gridx, gridy  = np.meshgrid(np.linspace(-1,1,2*M), np.linspace(-1,1,2*M))
+    gd            = np.sqrt(gridx*gridx+gridy*gridy)
+    sigma,moy     = gauss
+    K             = np.exp(-( (gd-moy)**2 / ( 2.0 * sigma**2 ) ) )
+    K             = K/np.sum(K)
+    K             = Simplex(K)
+    # K_shift
+    sigma_shift   = sigma + 0.05
+    K_shift       = np.exp(-( (gd-moy)**2 / ( 2.0 * sigma_shift**2 ) ) )
+    K_shift       = K_shift/np.sum(K_shift)
+    K_shift       = Simplex(K_shift) # Simplex
+    # plot
+    Display_ker(K_shift,K,mysize=(8,4))
+    #================================================================
+    # IMAGE
+    #================================================================
+    # Shepp-logan image generator
+    image   = shepp_logan_phantom()
+    image   = rescale(image, scale=0.4, mode='reflect', multichannel=False)
+    x_im    = image/np.amax(image)
+    # Blurred
+    x_blurr = Blurr(x_im,K)
+    # Add noise
+    x_noisy = Add_noise(x_blurr,noise_level=noise)
+    # plot
+    fig, (ax0, ax1, ax2) = plt.subplots(1, 3, figsize=(9,3)) # defimne graph  
+    # initial image
+    ax0.imshow(x_im,cmap='gray')
+    ax0.set_title('init')
+    ax0.axis('off')
+    # blurred
+    ax1.imshow(x_blurr,cmap='gray')
+    ax1.set_title('blurred')
+    ax1.axis('off')
+    # blurred&noisy
+    ax2.imshow(x_noisy,cmap='gray')
+    ax2.set_title('noisy')
+    ax2.axis('off')
+    # Show plot
+    plt.show()
+    # Error computation and dispay
+    norm     = np.linalg.norm(x_im)
+    err_bl2 = np.linalg.norm(x_blurr-x_im)/norm
+    err_nl2 = np.linalg.norm(x_noisy-x_im)/norm
+    print("Erreur blurred |x_blurr- x_true|_2 :{:.4f}".format(err_bl2))
+    print("Erreur |x_noisy - x_true|_2 :{:.4f}".format(err_nl2))
+    # return
+    return K, K_shift, x_im, x_blurr, x_noisy
+    
+# Export energy to compare methods
+def Export_ep(Ep,label='1',cas='1'):
+    """
+        Save a function in a chose folder
+        for plot purpose.
+
+        Parameters
+        ----------
+            Ep    (numpy array): path of the folder containing images
+            label      (string): '1' correspond to alternate and '2' to pda (algoviolet)
+        Returns
+        -------
+            --
+    """
+    # initialisation
+    folder ='./data' #fichier
+    Npoint = np.size(Ep)
+    xdata  = np.linspace(0,Npoint-1,Npoint)
+    ydata  = Ep.copy()
+    # name
+    if label=='1':
+        name='Ealtrn'+cas
+    if label=='2':
+        name='Edpa'+cas
+    with open(folder+'/'+name+'.txt', 'w') as f:
+        for i in range(Npoint):
+            web_browsers = ['{0}'.format(xdata[i]),' ','{0} \n'.format(ydata[i])]
+            f.writelines(web_browsers)
+                
+                
+# Image loader
+def ImLoader(file_name,im_name):
     """
     Load an image from path, crop it with even dimension Nx, Ny
     If colored images, keep only one chanel

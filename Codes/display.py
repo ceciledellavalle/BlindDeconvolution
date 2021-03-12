@@ -39,7 +39,7 @@ def Display_im(x_out,x_true,mysize=(6,4)):
     # Error computation and dispay
     norm     = np.linalg.norm(x_true)
     error_l2 = np.linalg.norm(x_out-x_true)/norm
-    print("Erreur |x_pred - x_true|_2 :{:.4f}".format(error_l2))
+    print("Erreur |im1 - im2|/|im2| :{:.4f}".format(error_l2))
     
 def Display_ker(K_alpha,K_init,mysize=(5,3)):
     """
@@ -71,31 +71,49 @@ def Display_ker(K_alpha,K_init,mysize=(5,3)):
     # Error computation and dispay
     norm     = np.linalg.norm(K_init)
     error_l2 = np.linalg.norm(K_alpha-K_init)/norm
-    print("Erreur |K_pred - K_true|_2 : {:.4f} ".format(error_l2))
+    print("Erreur |K1 - K2|/ |K2| : {:.4f} ".format(error_l2))
     
-def Display_epd(EpK,Epx,Ed):
+def Display_epd(Ep,Ed):
     """
-    Compare initial Kernel and reconstruct Kernel with regularization parameter alpha.
+    Plot energy during optimization, 
+    primal energy of kernel k and image u,
+    and dual energy of auxiliary variable v.
     Parameters
     ----------
-        Ep    (numpy array) : primal energy 
+        Ep    (numpy array) : primal energy of kernel and image
         Ed    (numpy array) : dual energy
     Returns
     ----------
         -
     """
     # define graph
-    fig, (ax0, ax1, ax2) = plt.subplots(1, 3 , figsize=(12,4))
-    # Kernel
-    ax0.plot(EpK,'r',label='kernel')
-    ax0.set_title('Primal energy')
-    ax0.legend()
-    # image
-    ax1.plot(Epx,'k',label='image')
+    fig, ( ax1, ax2) = plt.subplots(1, 2 , figsize=(8,4))
+    # kernel and image
+    ax1.plot(Ep,'r')
     ax1.set_title('Primal energy')
-    ax1.legend()
     # auxiliary variable
     ax2.plot(Ed)
     ax2.set_title('Dual energy')
+    # Show plot
+    plt.show()
+    
+def Display_energy(Ep1,Ep2):
+    """
+    Plot and compare primal energy during optimization.
+    Parameters
+    ----------
+        Ep1    (numpy array) : primal energy of algo1
+        Ep2    (numpy array) : primal energy of algo2
+    Returns
+    ----------
+        -
+    """
+    # define graph
+    fig, (ax1) = plt.subplots(1, 1 , figsize=(5,5))
+    # kernel and image
+    ax1.plot(Ep1,'r',label='alternate')
+    ax1.plot(Ep1,'k',label='PAD')
+    ax1.set_title('Primal energy')
+    ax1.legend()
     # Show plot
     plt.show()
