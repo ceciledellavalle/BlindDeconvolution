@@ -49,20 +49,13 @@ def AlternatingBD(K_in,x_in,x_blurred,alpha,mu,\
     M,_    = K_in.shape
     M      = M//2 # kernel middle size
     Nx, Ny = x_blurred.shape # image size
-    # kernel position (for padding)
-    min_x  = Nx//2+1-M-2
-    max_x  = Nx//2+M-1
-    min_y  = Ny//2+1-M-2
-    max_y  = Ny//2+M-1
-    # save
-    dict_param  = M,Nx,Ny,min_x,max_x,min_y,max_y # dictionnary of parameters
     # Derivation
     d      = -np.ones((3,3))
     d[1,1] = 8
     d_pad  = np.zeros((Nx,Ny))
     d_pad[Nx//2-1:Nx//2+2,Ny//2-1:Ny//2+2] = d
     # initialisation
-    Etot   = np.zeros(alte*niter_Lap+2*alte*niter_TV)
+    Ep,Ed  = np.zeros(alte*niter_Lap+2*alte*niter_TV),np.zeros(alte*niter_Lap+2*alte*niter_TV)
     Ki     = K_in.copy()
     xi     = x_in.copy()
     xi     = x_in.copy() # image
@@ -70,28 +63,27 @@ def AlternatingBD(K_in,x_in,x_blurred,alpha,mu,\
     xold   = x_in.copy() # image saved for relaxation
     px     = np.zeros((Nx,Ny)) 
     py     = np.zeros((Nx,Ny))
-    # rescaling
-    regK     = alpha*(2*M)**2
-    regx     = mu/Nx/Ny
+    #
+    count  = 0
     for i in range(alte):
         # First estimation of image
         print('------------- min image -----------------')
         for n in range(niter_TV):
             # one FBS for image
-            xi    = FBS_im(xi,Ki,px,py,x_blurred,regx,1,0.99,dict_param)
+            xi                  = FBS_im(xi,Ki,px,py,x_blurred,mu)
             # energy
-            Etot[i*(niter_Lap+2*niter_TV)+2*n],_ = Energy(xi,Ki,px,py,x_blurred,\
-                                              d_pad,regK,regx,1,dict_param)
+            Ep[count],Ed[count] = Energy(xi,Ki,px,py,x_blurred,d_pad,alpha,mu)
+            count              +=1
             # one FBS for dual variable
-            px,py = FBS_dual(xbar,Ki,px,py,regx,1,0.99)
+            px,py               = FBS_dual(xbar,Ki,px,py,mu)
             # energy
-            Etot[i*(niter_Lap+2*niter_TV)+2*n+1],_ = Energy(xi,Ki,px,py,x_blurred,\
-                                              d_pad,regK,regx,1,dict_param)
+            Ep[count],Ed[count] = Energy(xi,Ki,px,py,x_blurred,d_pad,alpha,mu)
+            count              +=1
             # relaxation
-            xbar  = 2*xi-xold
-            xold  = xi.copy()
+            xbar                = 2*xi-xold
+            xold                = xi.copy()
             # test
-            counter = i*(niter_Lap+2*niter_TV)+2*n
+            counter             = i*(niter_Lap+2*niter_TV)+2*n
             if counter%500==0:
                 gradK,gradx = Gradient(xi,Ki,px,py,x_blurred,d_pad,regK,regx,1,dict_param)
                 print("iteration {} %--- gradient K {:.4f} --- gradient x {:.4f}"\
@@ -100,15 +92,15 @@ def AlternatingBD(K_in,x_in,x_blurred,alpha,mu,\
         print('------------- min kernel -----------------')
         for m in range(niter_Lap):
             # one FBS for kernel
-            Ki   = FBS_ker(xi,Ki,x_blurred,d_pad,regK,1,1,dict_param,simplex=False)
+            Ki                  = FBS_ker(xi,Ki,x_blurred,d_pad,alpha,simplex=proj_simplex)
             # energy
-            Etot[(i+1)*2*niter_TV+i*niter_Lap+m],_ = Energy(xi,Ki,px,py,x_blurred,\
-                                              d_pad,regK,regx,1,dict_param)
+            Ep[count],Ed[count] = Energy(xi,Ki,px,py,x_blurred,d_pad,alpha,mu)
+            count              += 1
             # test
             counter = (i+1)*2*niter_TV+i*niter_Lap+m
             if counter%500==0:
-                gradK,gradx = Gradient(xi,Ki,px,py,x_blurred,d_pad,regK,regx,1,dict_param)
+                gradK,gradx = Gradient(xi,Ki,px,py,x_blurred,d_pad,alpha,mu)
                 print("iteration {} %--- gradient K {:.4f} --- gradient x {:.4f}"\
                          .format(counter,gradK,gradx))
-    return Ki,xi,Etot
+    return Ki,xi,Ep,Ed
         

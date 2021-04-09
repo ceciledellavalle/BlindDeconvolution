@@ -23,6 +23,7 @@ from skimage.transform import radon, rescale
 # local import
 from Codes.simplex import Simplex
 from Codes.display import Display_ker
+from Codes.myfunc import convolve
 
 #
 def DataGen(M=40,gauss=(0.15, 0.0),noise=0.05):
@@ -143,16 +144,12 @@ def Blurr(x_init,K):
         x_blurred (numpy array): output image
     """
     # Padd the kernel y
-    m,n   = x_init.shape
-    p,q   = K.shape
-    K_pad = np.pad(K, ((m//2-p//2,m//2-p//2),(n//2-q//2,n//2-q//2)), 'constant')
-    # Perform fft
-    fr  = fft2(x_init)
-    fr2 = fft2(K_pad) 
-    # Compute multiplication and inverse fft
-    x_blurred = np.real(ifft2(fr*fr2))
-    x_blurred = np.roll(x_blurred, -int(m//2+1),axis=0)
-    x_blurred = np.roll(x_blurred, -int(n//2+1),axis=1)
+    Nx,Ny = x_init.shape
+    M,_   = K.shape
+    M     = M//2
+    K_pad = np.pad(K, ((Nx//2-M,Nx//2-M),(Ny//2-M,Ny//2-M)), 'constant')
+    # Compute convolution
+    x_blurred = convolve(x_init,K_pad)
     return x_blurred
 
 def Add_noise(x_init,noise_level=0.01):
