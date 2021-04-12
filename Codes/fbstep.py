@@ -201,8 +201,7 @@ def Gradient(u,K,vx,vy,g,d_pad,alpha,mu,gamma=1):
         d_pad   (np.array) : derivarion for regularization
         alpha      (float) : parameter for kernel of regularization of Tikhonov type 
         mu         (float) : regularization parameter for Total Variation (TV)
-        gamma      (float) : wieght on the datafit term
-        dict_param (tuple) : size of kernel, image and padding parameters
+        gamma      (float) : weight on the datafit term
     Returns
     -------
         grad_K     (float): norm of gradient for kernel

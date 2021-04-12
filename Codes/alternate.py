@@ -23,9 +23,9 @@ from Codes.display import Display_ker
 from Codes.display import Display_im
 
 
-def AlternatingBD(K_in,x_in,x_blurred,alpha,mu,\
-                  alte=10,niter_TV=200,niter_Lap =200,\
-                  proj_simplex=False):
+def AlternatingBD(K_in,x_in,x_blurred,alpha,mu,gamma=1,\
+                  alte=4,niter_TV=500,niter_Lap =500,\
+                  proj_simplex=False,verbose=True):
     """
     Alternating estimation of a blind deconvolution.
     Parameters
@@ -35,15 +35,18 @@ def AlternatingBD(K_in,x_in,x_blurred,alpha,mu,\
         x_blurred (numpy array) : blurred and noisy image of size (Nx,Ny)
         alpha           (float) : regularisation parameter for Tikhonov type regularization
         mu              (float) : regularisation parameter for TV
+        gamma           (float) : weight on the data-fit term, default 1
         alte              (int) : number of alternating iterations
         niter_TV          (int) : number of iterations for image reconstruction
         niter_TV          (int) : number of iterations for kernel reconstruction
-        proj_simplex     (bool) : boolean, True if projection of kernel on simplex space
+        proj_simplex     (bool) : if True, then projection of kernel on simplex space
+        verbose          (bool) : if True, it displays intemediary result
     Returns
     --------
         Ki      (numpy array) : final estimated kernel of size (2M,2M)
         xi      (numpy array) : final deblurred denoised image of size (Nx,Ny)
-        Etot    (numpy array) : primal energy through every FB step
+        Ep      (numpy array) : primal energy through every FB step
+        Ed      (numpy.array) : Dual energy
     """
     # local parameters and matrix sizes
     M,_    = K_in.shape
@@ -63,44 +66,49 @@ def AlternatingBD(K_in,x_in,x_blurred,alpha,mu,\
     xold   = x_in.copy() # image saved for relaxation
     px     = np.zeros((Nx,Ny)) 
     py     = np.zeros((Nx,Ny))
+    wght   = gamma
     #
     count  = 0
     for i in range(alte):
         # First estimation of image
-        print('------------- min image -----------------')
+        if verbose:
+            print('------------- min image -----------------')
         for n in range(niter_TV):
             # one FBS for image
-            xi                  = FBS_im(xi,Ki,px,py,x_blurred,mu)
+            xi                  = FBS_im(xi,Ki,px,py,x_blurred,mu,gamma=wght)
             # energy
-            Ep[count],Ed[count] = Energy(xi,Ki,px,py,x_blurred,d_pad,alpha,mu)
+            Ep[count],Ed[count] = Energy(xi,Ki,px,py,x_blurred,d_pad,alpha,mu,gamma=wght)
             count              +=1
             # one FBS for dual variable
-            px,py               = FBS_dual(xbar,Ki,px,py,mu)
+            px,py               = FBS_dual(xbar,Ki,px,py,mu,gamma=wght)
             # energy
-            Ep[count],Ed[count] = Energy(xi,Ki,px,py,x_blurred,d_pad,alpha,mu)
+            Ep[count],Ed[count] = Energy(xi,Ki,px,py,x_blurred,d_pad,alpha,mu,gamma=wght)
             count              +=1
             # relaxation
             xbar                = 2*xi-xold
             xold                = xi.copy()
             # test
             counter             = i*(niter_Lap+2*niter_TV)+2*n
-            if counter%500==0:
-                gradK,gradx = Gradient(xi,Ki,px,py,x_blurred,d_pad,regK,regx,1,dict_param)
+            if (counter%500==0)&(verbose):
+                gradK,gradx = Gradient(xi,Ki,px,py,x_blurred,d_pad,alpha,mu,gamma=wght)
                 print("iteration {} %--- gradient K {:.4f} --- gradient x {:.4f}"\
                          .format(counter,gradK,gradx))
         # Second estimation of Kernel
-        print('------------- min kernel -----------------')
+        if verbose:
+            print('------------- min kernel -----------------')
         for m in range(niter_Lap):
             # one FBS for kernel
-            Ki                  = FBS_ker(xi,Ki,x_blurred,d_pad,alpha,simplex=proj_simplex)
+            Ki                  = FBS_ker(xi,Ki,x_blurred,d_pad,alpha,gamma=wght,simplex=proj_simplex)
             # energy
-            Ep[count],Ed[count] = Energy(xi,Ki,px,py,x_blurred,d_pad,alpha,mu)
+            Ep[count],Ed[count] = Energy(xi,Ki,px,py,x_blurred,d_pad,alpha,mu,gamma=wght)
             count              += 1
             # test
             counter = (i+1)*2*niter_TV+i*niter_Lap+m
-            if counter%500==0:
-                gradK,gradx = Gradient(xi,Ki,px,py,x_blurred,d_pad,alpha,mu)
+            if (counter%500==0)&(verbose):
+                gradK,gradx = Gradient(xi,Ki,px,py,x_blurred,d_pad,alpha,mu,gamma=wght)
                 print("iteration {} %--- gradient K {:.4f} --- gradient x {:.4f}"\
                          .format(counter,gradK,gradx))
+    # retrun
+    print('Final energy :',Ep[-1])
     return Ki,xi,Ep,Ed
         

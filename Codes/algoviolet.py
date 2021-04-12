@@ -25,9 +25,9 @@ from Codes.fbstep import Energy, Gradient
 
 
 def violetBD(K_in,x_in,x_blurred,\
-                  alpha,mu,\
-                  niter=200,coeffK=0.1,coeffx=0.1,\
-                  proj_simplex=False):
+                  alpha,mu,gamma=1,\
+                  niter=200,coeffK=1,coeffx=1,\
+                  proj_simplex=False, verbose=True):
     """
     one FBS step convexe, one FBS step convexe, one FBS concave
     extended chambolle-pock
@@ -38,16 +38,17 @@ def violetBD(K_in,x_in,x_blurred,\
            x_blurred (np.array) : blurred and noisy image size (Nx,Ny)
            alpha        (float) : regularization parameter of Tikhopnov type for Kernel
            mu           (float) : regularization parameter for TV
+           gamma           (float) : weight on the data-fit term, default 1
            niter          (int) : number of iterations
            coeffK       (float) : coefficient on kernel FB step
            coeffx       (float) : coefficient on image FB step
            proj_simplex  (bool) : projection of Kernel over simplex space
+           verbose       (bool) : if True, it displays intemediary result
        Returns
        ----------
            K         (np.array) : estimation of Kernel size (2M,2M)
            x         (np.array) : denoised deconvolved image size (Nx,Ny)
-           EpK       (np.array) : Primal energy for kernel, size (3*niter)
-           Epx       (np.array) : Primal energy for image, size (3*niter)
+           Ep        (np.array) : Primal energy for image, size (3*niter)
            Ed        (np.array) : Dual energy, size (3*niter) 
     """
     # local parameters and matrix sizes
@@ -66,33 +67,35 @@ def violetBD(K_in,x_in,x_blurred,\
     # Derivation
     d      = -np.ones((3,3))
     d[1,1] = 8
-    d_pad = np.pad(d, ((Nx//2-2,Nx//2-1),(Ny//2-2,Ny//2-1)), 'constant')
+    d_pad  = np.pad(d, ((Nx//2-2,Nx//2-1),(Ny//2-2,Ny//2-1)), 'constant')
     # gradient step initial
-    tauK = coeffK # primal kernel function FB step size
-    taux = coeffx # primal image function FB step size 
-    taup = 1 # dual function FB step size
+    tauK   = coeffK # primal kernel function FB step size coeff
+    taux   = coeffx # primal image function FB step size coeff 
+    taup   = 1 # dual function FB step size coeff
+    theta  = 0.5 # relaxation parameter
+    wght   = gamma
     #
     for i in range(niter):
-        # tauK *=0.998
+        tauK *=0.998
         # FBS for kernel
-        Ki    = FBS_ker(xi,Ki,x_blurred,d_pad,alpha,coeff=tauK,simplex=proj_simplex)
-        Ep[3*i],Ed[3*i] = Energy(xi,Ki,px,py,x_blurred,d_pad,alpha,mu)
+        Ki                  = FBS_ker(xi,Ki,x_blurred,d_pad,alpha,gamma=wght,coeff=tauK,simplex=proj_simplex)
+        Ep[3*i],Ed[3*i]     = Energy(xi,Ki,px,py,x_blurred,d_pad,alpha,mu)
         # FBS for image
-        xi    = FBS_im(xi,Ki,px,py,x_blurred,mu,coeff=taux)
-        Ep[3*i+1],Ed[3*i+1] = Energy(xi,Ki,px,py,x_blurred,d_pad,alpha,mu)
+        xi                  = FBS_im(xi,Ki,px,py,x_blurred,mu,gamma=wght,coeff=taux)
+        Ep[3*i+1],Ed[3*i+1] = Energy(xi,Ki,px,py,x_blurred,d_pad,alpha,mu,gamma=wght)
         # FBS for v (dual of TV)
-        px,py = FBS_dual(xbar,Ki,px,py,mu,coeff=taup)
-        Ep[3*i+2],Ed[3*i+2] = Energy(xi,Ki,px,py,x_blurred,d_pad,alpha,mu)
+        px,py               = FBS_dual(xbar,Ki,px,py,mu,gamma=wght,coeff=taup)
+        Ep[3*i+2],Ed[3*i+2] = Energy(xi,Ki,px,py,x_blurred,d_pad,alpha,mu,gamma=wght)
         # relaxation
-        xbar     = xi + theta*(xi-xold)
-        xold   = xi.copy()
+        xbar  = xi + theta*(xi-xold)
+        xold  = xi.copy()
         # test
         if (i==0):
-            gradK0,gradx0 = Gradient(xi,Ki,px,py,x_blurred,d_pad,alpha,mu)
+            gradK0,gradx0   = Gradient(xi,Ki,px,py,x_blurred,d_pad,alpha,mu,gamma=wght)
         if (i>0):
-            gradK,gradx = Gradient(xi,Ki,px,py,x_blurred,d_pad,alpha,mu)
+            gradK,gradx     = Gradient(xi,Ki,px,py,x_blurred,d_pad,alpha,mu,gamma=wght)
             stat = niter//50
-            if i%stat==0:
+            if (i%stat==0)&(verbose):
                 print("iteration {} %--- gradient K {:.4f} --- gradient x {:.4f}"\
                      .format(i,gradK,gradx))
             if (gradK/gradK0 <10**-3) or (gradx/gradx0<10**-3):
@@ -104,5 +107,7 @@ def violetBD(K_in,x_in,x_blurred,\
             if (Ep[3*i+1]>10*Ep[0]):
                 print("stops prematurely at {} iterations : energy rises".format(i))
                 return Ki,xi,Ep,Ed
+    # retrun
+    print('Final energy :',Ep[-1])
     return Ki,xi,Ep,Ed
  

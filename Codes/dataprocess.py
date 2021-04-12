@@ -18,6 +18,7 @@ import random
 import os
 from PIL import Image
 from scipy import signal
+from scipy.interpolate import interp1d
 from skimage.data import shepp_logan_phantom
 from skimage.transform import radon, rescale
 # local import
@@ -31,7 +32,7 @@ def DataGen(M=40,gauss=(0.15, 0.0),noise=0.05):
     # KERNEL
     #================================================================
     # Kernel generator
-    M             = 40
+    M             = 20
     gridx, gridy  = np.meshgrid(np.linspace(-1,1,2*M), np.linspace(-1,1,2*M))
     gd            = np.sqrt(gridx*gridx+gridy*gridy)
     sigma,moy     = gauss
@@ -91,23 +92,29 @@ def Export_ep(Ep,label='1',cas='1'):
         ----------
             Ep    (numpy array): path of the folder containing images
             label      (string): '1' correspond to alternate and '2' to pda (algoviolet)
+            cas        (string): '1' correspond to noise, exact kernel, '2' to non noise, diff kernel init
+                                 and '3' to noise and different kernel init
         Returns
         -------
             --
     """
     # initialisation
-    folder ='./data' #fichier
+    folder ='./Redaction/data' #fichier
     Npoint = np.size(Ep)
     xdata  = np.linspace(0,Npoint-1,Npoint)
     ydata  = Ep.copy()
+    # interpolation
+    f = interp1d(xdata, ydata)
+    xnew = np.linspace(0,Npoint-1,100)
+    ynew = f(xnew)
     # name
     if label=='1':
         name='Ealtrn'+cas
     if label=='2':
         name='Edpa'+cas
     with open(folder+'/'+name+'.txt', 'w') as f:
-        for i in range(Npoint):
-            web_browsers = ['{0}'.format(xdata[i]),' ','{0} \n'.format(ydata[i])]
+        for i in range(100):
+            web_browsers = ['{0}'.format(xnew[i]),' ','{0} \n'.format(ynew[i])]
             f.writelines(web_browsers)
                 
                 
