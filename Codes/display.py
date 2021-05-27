@@ -41,37 +41,41 @@ def Display_im(x_out,x_true,mysize=(6,4)):
     error_l2 = np.linalg.norm(x_out-x_true)/norm
     print("Erreur |im1 - im2|/|im2| :{:.4f}".format(error_l2))
     
-def Display_ker(K_alpha,K_init,mysize=(5,3)):
+def Display_ker(K_1,K_2,mysize=(5,3),label1='K1',label2='K2'):
     """
     Compare initial Kernel and reconstruct Kernel with regularization parameter alpha.
     Parameters
     ----------
-        K_alpha   (numpy array) : reconstruct kernel (2Mx2M size)
-        K_init    (numpy array) : reference, initial or true kernel (2Mx2M size)
+        K_1   (numpy array) : reconstruct kernel (2Mx2M+1 size)
+        K_2    (numpy array) : reference, initial or true kernel (2Mx2M+1 size)
     Returns
     ----------
         -
     """
     # define graph
-    fig, (ax1, ax2, ax3) = plt.subplots(1, 3 , figsize=mysize)
+    fig, (ax1, ax2, ax3, ax4) = plt.subplots(1, 4 , figsize=mysize,gridspec_kw={'width_ratios': [1,1,1,3]})
     # Initial Kernel
-    ax1.imshow(K_init)
-    ax1.set_title('K1')
+    ax1.imshow(K_1)
+    ax1.set_title(label1)
     ax1.axis('off')
     # Reconstruct Kernel
-    ax2.imshow(K_alpha)
-    ax2.set_title('K2')
+    ax2.imshow(K_2)
+    ax2.set_title(label2)
     ax2.axis('off')
     # Reconstruct Kernel
-    ax3.imshow(K_alpha-K_init)
+    ax3.imshow(K_1-K_2)
     ax3.set_title('Comparison')
     ax3.axis('off')
+    # Comparison of a slice
+    ax4.plot(K_1[21,:],label=label1)
+    ax4.plot(K_2[21,:],label=label2)
+    ax4.legend()
     # Show plot
     plt.show()
     # Error computation and dispay
-    norm     = np.linalg.norm(K_init)
-    error_l2 = np.linalg.norm(K_alpha-K_init)/norm
-    print("Erreur |K1 - K2|/ |K2| : {:.4f} ".format(error_l2))
+    norm     = np.linalg.norm(K_2)
+    error_l2 = np.linalg.norm(K_1-K_2)/norm
+    print("Erreur |"+label1+" - "+label2+"|/ |"+label2+"| : {:.4f} ".format(error_l2))
     
 def Display_epd(Ep,Ed):
     """

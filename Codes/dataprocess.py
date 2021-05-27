@@ -27,25 +27,24 @@ from Codes.display import Display_ker
 from Codes.myfunc import convolve
 
 #
-def DataGen(M=40,gauss=(0.15, 0.0),noise=0.05):
+def DataGen(M=20,gauss=(0.2, 0.0),noise=0.05):
     #================================================================
     # KERNEL
     #================================================================
     # Kernel generator
-    M             = 20
-    gridx, gridy  = np.meshgrid(np.linspace(-1,1,2*M), np.linspace(-1,1,2*M))
+    gridx, gridy  = np.meshgrid(np.linspace(-1,1,2*M+1), np.linspace(-1,1,2*M+1))
     gd            = np.sqrt(gridx*gridx+gridy*gridy)
     sigma,moy     = gauss
     K             = np.exp(-( (gd-moy)**2 / ( 2.0 * sigma**2 ) ) )
     K             = K/np.sum(K)
     K             = Simplex(K)
     # K_shift
-    sigma_shift   = sigma + 0.05
+    sigma_shift   = sigma - 0.05
     K_shift       = np.exp(-( (gd-moy)**2 / ( 2.0 * sigma_shift**2 ) ) )
     K_shift       = K_shift/np.sum(K_shift)
     K_shift       = Simplex(K_shift) # Simplex
     # plot
-    Display_ker(K_shift,K,mysize=(8,4))
+    Display_ker(K_shift,K,mysize=(10,4),label1='Shift',label2='True')
     #================================================================
     # IMAGE
     #================================================================
@@ -53,6 +52,7 @@ def DataGen(M=40,gauss=(0.15, 0.0),noise=0.05):
     image   = shepp_logan_phantom()
     image   = rescale(image, scale=0.4, mode='reflect', multichannel=False)
     x_im    = image/np.amax(image)
+    x_im    = np.pad(x_im, ((9,10),(2,3)), 'constant')
     # Blurred
     x_blurr = Blurr(x_im,K)
     # Add noise

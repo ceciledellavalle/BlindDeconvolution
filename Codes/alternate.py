@@ -52,21 +52,23 @@ def AlternatingBD(K_in,x_in,x_blurred,alpha,mu,gamma=1,\
     M,_    = K_in.shape
     M      = M//2 # kernel middle size
     Nx, Ny = x_blurred.shape # image size
-    # Derivation
-    d      = -np.ones((3,3))
-    d[1,1] = 8
-    d_pad  = np.zeros((Nx,Ny))
-    d_pad[Nx//2-1:Nx//2+2,Ny//2-1:Ny//2+2] = d
     # initialisation
+    Ki     = K_in.copy() # kernel
+    Ki     = np.pad(Ki, ((Nx//2-M,Nx//2-M),(Ny//2-M,Ny//2-M)),'constant') #padding
     Ep,Ed  = np.zeros(alte*niter_Lap+2*alte*niter_TV),np.zeros(alte*niter_Lap+2*alte*niter_TV)
-    Ki     = K_in.copy()
-    xi     = x_in.copy()
     xi     = x_in.copy() # image
     xbar   = x_in.copy() # image
     xold   = x_in.copy() # image saved for relaxation
-    px     = np.zeros((Nx,Ny)) 
-    py     = np.zeros((Nx,Ny))
+    px     = np.zeros((Nx,Ny)) # dual variable on x
+    py     = np.zeros((Nx,Ny)) # dual variable on y
+    # Derivation
+    d      = -np.ones((3,3))
+    d[1,1] = 8
+    d_pad  = np.pad(d, ((Nx//2-1,Nx//2-1),(Ny//2-1,Ny//2-1)), 'constant')
+    # gradient step initial
     wght   = gamma
+    # initialisation
+    Ep,Ed  = np.zeros(alte*niter_Lap+2*alte*niter_TV),np.zeros(alte*niter_Lap+2*alte*niter_TV)
     #
     count  = 0
     for i in range(alte):
@@ -80,7 +82,7 @@ def AlternatingBD(K_in,x_in,x_blurred,alpha,mu,gamma=1,\
             Ep[count],Ed[count] = Energy(xi,Ki,px,py,x_blurred,d_pad,alpha,mu,gamma=wght)
             count              +=1
             # one FBS for dual variable
-            px,py               = FBS_dual(xbar,Ki,px,py,mu,gamma=wght)
+            px,py               = FBS_dual(xbar,px,py,mu,gamma=wght)
             # energy
             Ep[count],Ed[count] = Energy(xi,Ki,px,py,x_blurred,d_pad,alpha,mu,gamma=wght)
             count              +=1
