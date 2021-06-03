@@ -24,7 +24,7 @@ from Codes.fbstep import FBS_ker, FBS_im, FBS_dual
 from Codes.fbstep import Energy, Gradient
 
 
-def violetBD(K_in,x_in,x_blurred,\
+def violetBD(x_in,K_in,x_blurred,\
                   alpha,mu,gamma=1,\
                   niter=200,coeffK=1,coeffx=1,\
                   proj_simplex=False, verbose=True):
@@ -72,53 +72,62 @@ def violetBD(K_in,x_in,x_blurred,\
     d_pad  = np.pad(d, ((Nx//2-1,Nx//2-1),(Ny//2-1,Ny//2-1)), 'constant')
     # gradient step initial
     tauK   = coeffK # primal kernel function FB step size coeff
-    taux   = coeffx/2 # primal image function FB step size coeff 
-    taup   = coeffx/2 # dual function FB step size coeff
+    taux   = coeffx # primal image function FB step size coeff 
+    taup   = coeffx # dual function FB step size coeff
     theta  = 1 # relaxation parameter
     wght   = gamma
     #
     for i in range(niter):
         # tauK *=0.998
         # FBS for kernel
-        Ki                  = FBS_ker(xi,Ki,x_blurred,d_pad,alpha,gamma=wght,coeff=tauK,simplex=proj_simplex)
-        Ep[3*i],Ed[3*i]     = Energy(xi,Ki,px,py,x_blurred,d_pad,alpha,mu)
-        # FBS for image
-        xi                  = FBS_im(xi,Ki,px,py,x_blurred,mu,gamma=wght,coeff=taux)
-        Ep[3*i+1],Ed[3*i+1] = Energy(xi,Ki,px,py,x_blurred,d_pad,alpha,mu,gamma=wght)
+        Ki                  = FBS_ker(xi,Ki,x_blurred,d_pad,alpha,gamma=wght,M=M,coeff=tauK,simplex=proj_simplex)
+        Ep[3*i],Ed[3*i]     = Energy(xi,Ki,px,py,x_blurred,d_pad,alpha,mu,gamma=wght)
+        gradK,_             = Gradient(xi,Ki,px,py,x_blurred,d_pad,alpha,mu,gamma=wght)
         # FBS for v (dual of TV)
         px,py               = FBS_dual(xbar,px,py,mu,gamma=wght,coeff=taup)
+        Ep[3*i+1],Ed[3*i+1] = Energy(xi,Ki,px,py,x_blurred,d_pad,alpha,mu,gamma=wght)
+        # FBS for image
+        xi                  = FBS_im(xi,Ki,px,py,x_blurred,mu,gamma=wght,coeff=taux)
         Ep[3*i+2],Ed[3*i+2] = Energy(xi,Ki,px,py,x_blurred,d_pad,alpha,mu,gamma=wght)
+        _,gradx             = Gradient(xi,Ki,px,py,x_blurred,d_pad,alpha,mu,gamma=wght)
         # relaxation
         xbar  = xi + theta*(xi-xold)
         xold  = xi.copy()
-        # test
-        if (i==0):
-            gradK0,gradx0   = Gradient(xi,Ki,px,py,x_blurred,d_pad,alpha,mu,gamma=wght)
-        if (i>0):
-            gradK,gradx     = Gradient(xi,Ki,px,py,x_blurred,d_pad,alpha,mu,gamma=wght)
-            stat = niter//50
-            if (i%stat==0)&(verbose):
-                print("iteration {} %--- gradient K {:.4f} --- gradient x {:.4f}"\
-                     .format(i,gradK,gradx))
-            # Test gradient and energy
-            if (gradK/gradK0 <10**-10) or (gradx/gradx0<10**-3):
-                print("stops at {} iterations : the algorithm converges".format(i))
-                Ki = Ki[Nx//2-M:Nx//2+M+1,Ny//2-M:Ny//2+M+1]
-                return Ki,xi,Ep,Ed
-            elif (coeffK>0)and(gradK/gradK0 >100):
-                print("stops at {} iterations : gradient of K rises".format(i))
-                Ki = Ki[Nx//2-M:Nx//2+M+1,Ny//2-M:Ny//2+M+1]
-                return Ki,xi,Ep,Ed
-            elif (gradx/gradx0>100) :
-                print("stops at {} iterations : gradient of image rises".format(i))
-                Ki = Ki[Nx//2-M:Nx//2+M+1,Ny//2-M:Ny//2+M+1]
-                return Ki,xi,Ep,Ed
-            elif (Ep[3*i+1]>10*Ep[0]):
-                print("stops prematurely at {} iterations : energy rises".format(i))
-                Ki = Ki[Nx//2-M:Nx//2+M+1,Ny//2-M:Ny//2+M+1]
-                return Ki,xi,Ep,Ed
+        # print function
+        stat = niter//50
+        if (i%stat==0)&(verbose):
+            print("iteration {} %-- gradient K {:.2f} -- gradient x {:.2f}"\
+                 .format(i,gradK,gradx))
+            print("Energie fbs K {:.2f} -- fbs v {:.2f} -- fbs u {:.2f}"\
+                 .format(Ep[3*i],Ep[3*i+1],Ep[3*i+2]))
     # retrun
     print('Final energy :',Ep[-1])
     Ki = Ki[Nx//2-M:Nx//2+M+1,Ny//2-M:Ny//2+M+1]
     return Ki,xi,Ep,Ed
  
+ 
+############################################################# 
+def Test(i,xi,Ki,px,py,x_blurred,d_pad,alpha,mu,gamma=1):
+    # test
+    if (i==0):
+        gradK0,gradx0   = Gradient(xi,Ki,px,py,x_blurred,d_pad,alpha,mu,gamma=wght)
+    if (i>0):
+        gradK,gradx     = Gradient(xi,Ki,px,py,x_blurred,d_pad,alpha,mu,gamma=wght)
+        stat = niter//50
+    # Test gradient and energy
+    if (gradK/gradK0 <10**-10) or (gradx/gradx0<10**-3):
+        print("stops at {} iterations : the algorithm converges".format(i))
+        Ki = Ki[Nx//2-M:Nx//2+M+1,Ny//2-M:Ny//2+M+1]
+        return Ki,xi,Ep,Ed
+    elif (coeffK>0)and(gradK/gradK0 >100):
+        print("stops at {} iterations : gradient of K rises".format(i))
+        Ki = Ki[Nx//2-M:Nx//2+M+1,Ny//2-M:Ny//2+M+1]
+        return Ki,xi,Ep,Ed
+    elif (coeffx>0)and(gradx/gradx0>100) :
+        print("stops at {} iterations : gradient of image rises".format(i))
+        Ki = Ki[Nx//2-M:Nx//2+M+1,Ny//2-M:Ny//2+M+1]
+        return Ki,xi,Ep,Ed
+    elif (Ep[3*i+1]>100*Ep[0]):
+        print("stops prematurely at {} iterations : energy rises".format(i))
+        Ki = Ki[Nx//2-M:Nx//2+M+1,Ny//2-M:Ny//2+M+1]
+        return Ki,xi,Ep,Ed

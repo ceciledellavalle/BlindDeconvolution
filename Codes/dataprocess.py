@@ -10,13 +10,13 @@ Tools functions to load, blurr and show images or data
 
 # IMPORTATION
 import numpy as np
-from numpy.fft import fft2, ifft2
+from PIL import Image
+import imageio
 import sys
 import matplotlib.pyplot as plt
 import math
 import random
 import os
-from PIL import Image
 from scipy import signal
 from scipy.interpolate import interp1d
 from skimage.data import shepp_logan_phantom
@@ -27,7 +27,7 @@ from Codes.display import Display_ker
 from Codes.myfunc import convolve
 
 #
-def DataGen(M=20,gauss=(0.2, 0.0),noise=0.05):
+def DataGen(M=20,gauss=(0.2, 0.0),noise=0.1):
     #================================================================
     # KERNEL
     #================================================================
@@ -37,26 +37,25 @@ def DataGen(M=20,gauss=(0.2, 0.0),noise=0.05):
     sigma,moy     = gauss
     K             = np.exp(-( (gd-moy)**2 / ( 2.0 * sigma**2 ) ) )
     K             = K/np.sum(K)
-    K             = Simplex(K)
     # K_shift
-    sigma_shift   = sigma - 0.05
+    sigma_shift   = sigma + 0.05
     K_shift       = np.exp(-( (gd-moy)**2 / ( 2.0 * sigma_shift**2 ) ) )
     K_shift       = K_shift/np.sum(K_shift)
-    K_shift       = Simplex(K_shift) # Simplex
     # plot
     Display_ker(K_shift,K,mysize=(10,4),label1='Shift',label2='True')
     #================================================================
     # IMAGE
     #================================================================
     # Shepp-logan image generator
-    image   = shepp_logan_phantom()
-    image   = rescale(image, scale=0.4, mode='reflect', multichannel=False)
-    x_im    = image/np.amax(image)
-    x_im    = np.pad(x_im, ((9,10),(2,3)), 'constant')
+    image        = shepp_logan_phantom()
+    image        = rescale(image, scale=0.4, mode='reflect', multichannel=False)
+    x_im         = 0.99*image/np.amax(image)
+    x_im[x_im<0] = 0
+    x_im         = np.pad(x_im, ((9,10),(2,3)), 'constant')
     # Blurred
-    x_blurr = Blurr(x_im,K)
+    x_blurr      = Blurr(x_im,K)
     # Add noise
-    x_noisy = Add_noise(x_blurr,noise_level=noise)
+    x_noisy      = Add_noise(x_blurr,noise_level=noise)
     # plot
     fig, (ax0, ax1, ax2) = plt.subplots(1, 3, figsize=(9,3)) # defimne graph  
     # initial image
@@ -83,7 +82,7 @@ def DataGen(M=20,gauss=(0.2, 0.0),noise=0.05):
     return K, K_shift, x_im, x_blurr, x_noisy
     
 # Export energy to compare methods
-def Export_ep(Ep,label='1',cas='1'):
+def Export_ep(Ep,label='1',name='nom'):
     """
         Save a function in a chose folder
         for plot purpose.
@@ -92,8 +91,7 @@ def Export_ep(Ep,label='1',cas='1'):
         ----------
             Ep    (numpy array): path of the folder containing images
             label      (string): '1' correspond to alternate and '2' to pda (algoviolet)
-            cas        (string): '1' correspond to noise, exact kernel, '2' to non noise, diff kernel init
-                                 and '3' to noise and different kernel init
+            cas        (string): other name
         Returns
         -------
             --
@@ -109,15 +107,31 @@ def Export_ep(Ep,label='1',cas='1'):
     ynew = f(xnew)
     # name
     if label=='1':
-        name='Ealtrn'+cas
+        name='alt'+name
     if label=='2':
-        name='Edpa'+cas
+        name='pda'+name
     with open(folder+'/'+name+'.txt', 'w') as f:
         for i in range(100):
             web_browsers = ['{0}'.format(xnew[i]),' ','{0} \n'.format(ynew[i])]
             f.writelines(web_browsers)
                 
-                
+# Export image
+def Export_im(g,label='im'):
+    """
+        Save an image in a chose folder
+        for plot purpose.
+
+        Parameters
+        ----------
+            g    (numpy array): kernel or image
+            label     (string): name of the image
+        Returns
+        -------
+            --
+    """
+    imageio.imwrite(label+'.jpg', x_b)
+
+              
 # Image loader
 def ImLoader(file_name,im_name):
     """

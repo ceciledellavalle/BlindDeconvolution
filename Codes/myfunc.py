@@ -11,7 +11,7 @@ Function used in the blind deconvolution algorithm
 """
 # General import
 import numpy as np
-from numpy.fft import fft2, ifft2, fftshift
+from scipy.signal import fftconvolve
 import matplotlib.pyplot as plt
 import math
 
@@ -20,16 +20,7 @@ def convolve(u,v):
     """
     Convolution of 2D vectors of same size.
     """
-    # Perform fft
-    fftu     = fft2(u)
-    fftv     = fft2(v)
-    # multiply
-    fft_conv = fftu*fftv
-    # real
-    conv     = np.real(ifft2(fft_conv))
-    # shift zero freq
-    conv     = fftshift(conv)
-    return conv
+    return fftconvolve(u,v,mode='same')
     
 # function projection on B(alpha)
 def projB(px,py,mu) :

@@ -28,7 +28,7 @@ from Codes.myfunc import divh
 
 
 # One forward-bakward step for the kernel
-def FBS_ker(u,K_pad,g,d_pad,alpha,gamma=1,coeff=1,simplex=False):
+def FBS_ker(u,K_pad,g,d_pad,alpha,gamma=1,M=20,coeff=1,simplex=False):
     """
     one step of forward-backward algorithm for the image varaible
     Parameters
@@ -46,18 +46,22 @@ def FBS_ker(u,K_pad,g,d_pad,alpha,gamma=1,coeff=1,simplex=False):
         Kk     (np.array) : kernel variable after one FB step, of size (2M,2M)
     """
     # kernel FB step size
-    tau = coeff*1/(gamma*np.linalg.norm(ifft2(fft2(u)**2)) \
-      + alpha*np.linalg.norm(ifft2(fft2(d_pad)**2)))
+    tau = coeff*0.1/(gamma*np.linalg.norm(convolve(u,u)) + alpha*np.linalg.norm(convolve(d_pad,d_pad)) )
     # Step 1
     # calcul du gradient
     grad1 = gamma*convolve(u,convolve(u,K_pad)-g)# datafit term
     grad2 = alpha*convolve(d_pad,convolve(d_pad,K_pad)) # regularisation
     grad  = grad1 + grad2
-    Kk    = K_pad - tau*grad # descente de gradient
+    Kk   = K_pad - tau*grad # descente de gradient
     # Step 2
     # projection
+    Nx,Ny = K_pad.shape
+    K_proj = Kk[Nx//2-M:Nx//2+M+1,Ny//2-M:Ny//2+M+1]
     if simplex:
-        Kk = Simplex(Kk)
+        K_proj[K_proj>0.1]= 0.1
+        K_proj[K_proj<0] = 0
+    Kk     = np.zeros((Nx,Ny))
+    Kk[Nx//2-M:Nx//2+M+1,Ny//2-M:Ny//2+M+1] = K_proj
     #
     return Kk
 
@@ -80,7 +84,7 @@ def FBS_im(u,K_pad,vx,vy,g,mu,gamma=1,coeff=1):
         uk     (np.array) : image variable after one FB step, of size (Nx,Ny)
     """
     # image FB step size
-    tau = coeff*1/(np.sqrt(8)+gamma*np.linalg.norm(ifft2(fft2(K_pad)**2)))
+    tau = coeff*1/(np.sqrt(8)+gamma*np.linalg.norm(convolve(K_pad,K_pad)))
     # Step 1
     # compute gradient
     nablap = divh(vx,vy) 
@@ -144,11 +148,11 @@ def Energy(u,K_pad,vx,vy,g,d_pad,alpha,mu,gamma=1):
     conv2 = convolve(d_pad,K_pad)
     ux,uy = nablah(u)
     normu = np.abs(ux)+np.abs(uy)
-    #
+    # Primal energy
     Ep    = 0.5*gamma*np.linalg.norm(conv1-g)**2 \
           + 0.5*alpha*np.linalg.norm(conv2)**2\
           + mu*np.sum(normu)
-    #
+    # Dual energy
     Ed    = -np.sum(ux*vx)-np.sum(uy*vy)
     return Ep,Ed
 

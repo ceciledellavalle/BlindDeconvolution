@@ -76,13 +76,13 @@ def AlternatingBD(K_in,x_in,x_blurred,alpha,mu,gamma=1,\
         if verbose:
             print('------------- min image -----------------')
         for n in range(niter_TV):
-            # one FBS for image
-            xi                  = FBS_im(xi,Ki,px,py,x_blurred,mu,gamma=wght)
+            # one FBS for dual variable
+            px,py               = FBS_dual(xbar,px,py,mu,gamma=wght)
             # energy
             Ep[count],Ed[count] = Energy(xi,Ki,px,py,x_blurred,d_pad,alpha,mu,gamma=wght)
             count              +=1
-            # one FBS for dual variable
-            px,py               = FBS_dual(xbar,px,py,mu,gamma=wght)
+            # one FBS for image
+            xi                  = FBS_im(xi,Ki,px,py,x_blurred,mu,gamma=wght)
             # energy
             Ep[count],Ed[count] = Energy(xi,Ki,px,py,x_blurred,d_pad,alpha,mu,gamma=wght)
             count              +=1
@@ -95,6 +95,7 @@ def AlternatingBD(K_in,x_in,x_blurred,alpha,mu,gamma=1,\
                 gradK,gradx = Gradient(xi,Ki,px,py,x_blurred,d_pad,alpha,mu,gamma=wght)
                 print("iteration {} %--- gradient K {:.4f} --- gradient x {:.4f}"\
                          .format(counter,gradK,gradx))
+        print("Energie = ",Ep[count-1])
         # Second estimation of Kernel
         if verbose:
             print('------------- min kernel -----------------')
@@ -110,7 +111,9 @@ def AlternatingBD(K_in,x_in,x_blurred,alpha,mu,gamma=1,\
                 gradK,gradx = Gradient(xi,Ki,px,py,x_blurred,d_pad,alpha,mu,gamma=wght)
                 print("iteration {} %--- gradient K {:.4f} --- gradient x {:.4f}"\
                          .format(counter,gradK,gradx))
+        print("Energie = ",Ep[count-1])
     # retrun
     print('Final energy :',Ep[-1])
+    Ki = Ki[Nx//2-M:Nx//2+M+1,Ny//2-M:Ny//2+M+1]
     return Ki,xi,Ep,Ed
         
